@@ -38,9 +38,23 @@ if "selected_name" not in st.session_state:
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
 
-# --- 4. CSS 스타일 주입 (표 정렬만 담당) ---
+# --- 4. CSS 스타일 주입 (모바일 강제 1줄 세우기 완벽 차단) ---
 st.markdown("""
     <style>
+        /* ⭐️ 핵심: 왼쪽 폼 영역(버튼들)은 폰에서 화면이 좁아져도 절대 1줄로 안 꺾이게 50%씩 강제 유지 */
+        @media (max-width: 768px) {
+            div[data-testid="column"]:first-of-type div[data-testid="stHorizontalBlock"] {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+            }
+            div[data-testid="column"]:first-of-type div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                width: 50% !important;
+                flex: 1 1 50% !important;
+                min-width: 50% !important;
+            }
+        }
+
         /* 표 반응형 스타일 (한 화면 쏙 안착) */
         .custom-overtime-table {
             width: 100%;
@@ -97,7 +111,7 @@ col1, col2 = st.columns([1, 1.5])
 with col1:
     st.header(f"📝 야근 계획 등록 ({today_str})")
     
-    # ⭐️ 이름 버튼: 2칸짜리 묶음을 반복 생성하여 모바일에서도 강제로 2열 정렬
+    # ⭐️ PC/모바일 구분 없이 무조건 2칸씩 생성!
     st.markdown("**1. 이름을 선택하세요**")
     for i in range(0, len(members), 2):
         row_cols = st.columns(2)
@@ -111,7 +125,7 @@ with col1:
             
     st.write("") 
     
-    # ⭐️ 시간 버튼: (오타 수정 완료!) 2칸짜리 묶음을 반복 생성
+    # ⭐️ PC/모바일 구분 없이 무조건 2칸씩 생성!
     st.markdown("**2. 종료 시간을 선택하세요**")
     for i in range(0, len(time_slots), 2):
         row_cols = st.columns(2)
@@ -125,7 +139,7 @@ with col1:
             
     st.write("") 
     
-    # 등록/취소 버튼 영역 (반반 유지)
+    # 등록/취소 버튼 영역
     btn_cols = st.columns(2)
     
     with btn_cols[0]:
