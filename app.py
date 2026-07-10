@@ -32,30 +32,53 @@ def init_db():
 
 init_db()
 
-# --- 3. 상태 관리 ---
-if "selected_name" not in st.session_state:
-    st.session_state.selected_name = members[0]
-if "selected_end_time" not in st.session_state:
-    st.session_state.selected_end_time = time_slots[0]
-
-# --- 4. CSS 스타일 주입 (모바일 강제 1줄 세우기 완벽 차단) ---
+# --- 3. CSS 스타일 주입 (라디오 버튼을 일반 버튼처럼 완벽 위장) ---
 st.markdown("""
     <style>
-        /* ⭐️ 핵심: 왼쪽 폼 영역(버튼들)은 폰에서 화면이 좁아져도 절대 1줄로 안 꺾이게 50%씩 강제 유지 */
+        /* ⭐️ 기본 라디오버튼의 동그라미 선택 마크 아예 숨기기 */
+        div[role="radiogroup"] label > div:first-child {
+            display: none !important;
+        }
+        
+        /* ⭐️ 라디오 버튼을 일반 네모 버튼처럼 디자인 */
+        div[role="radiogroup"] label {
+            background-color: #ffffff;
+            border: 1px solid #dcdde1;
+            padding: 8px 16px;
+            border-radius: 8px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: center;
+        }
+        
+        /* 선택되었을 때 (빨간색 강조) */
+        div[role="radiogroup"] label[data-checked="true"] {
+            background-color: #ff4b4b !important;
+            border-color: #ff4b4b !important;
+        }
+        div[role="radiogroup"] label[data-checked="true"] p {
+            color: #ffffff !important;
+            font-weight: bold;
+        }
+
+        /* ⭐️ 모바일(768px 이하)에서 버튼을 무조건 2칸으로 꽉 채우기 */
         @media (max-width: 768px) {
-            div[data-testid="column"]:first-of-type div[data-testid="stHorizontalBlock"] {
-                display: flex !important;
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
+            div[role="radiogroup"] {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
             }
-            div[data-testid="column"]:first-of-type div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-                width: 50% !important;
-                flex: 1 1 50% !important;
-                min-width: 50% !important;
+            div[role="radiogroup"] label {
+                flex: 1 1 calc(50% - 12px) !important; /* 강제로 2칸씩 맞춤 */
+                margin: 0 !important;
             }
         }
 
-        /* 표 반응형 스타일 (한 화면 쏙 안착) */
+        /* 표 반응형 스타일 */
         .custom-overtime-table {
             width: 100%;
             border-collapse: collapse;
@@ -63,99 +86,54 @@ st.markdown("""
             font-size: 15px;
             table-layout: fixed; 
         }
-        .custom-overtime-table th {
-            background-color: #f0f2f6;
-            color: #31333F;
-            font-weight: bold;
+        .custom-overtime-table th, .custom-overtime-table td {
+            border: 1px solid #dcdde1;
+            padding: 10px 2px;
             text-align: center !important;
             vertical-align: middle !important;
-            padding: 10px 2px;
-            border: 1px solid #dcdde1;
-            width: 12.5%; 
         }
-        .custom-overtime-table td {
-            text-align: center !important;
-            vertical-align: middle !important;
-            padding: 10px 2px;
-            border: 1px solid #dcdde1;
-            height: 45px;
-            width: 12.5%; 
-            word-break: keep-all; 
-        }
-        .overtime-checked {
-            background-color: #fff5f5;
-            color: #ff4b4b;
-            font-weight: bold;
-        }
+        .custom-overtime-table th { background-color: #f0f2f6; color: #31333F; font-weight: bold; }
+        .overtime-checked { background-color: #fff5f5; color: #ff4b4b; font-weight: bold; }
         
         @media (max-width: 768px) {
-            .custom-overtime-table {
-                font-size: 11px !important; 
-            }
-            .custom-overtime-table th, .custom-overtime-table td {
-                padding: 4px 0px !important; 
-                height: 35px;
-            }
-            .overtime-checked {
-                font-size: 10px !important; 
-                letter-spacing: -1px; 
-            }
+            .custom-overtime-table { font-size: 11px !important; }
+            .custom-overtime-table th, .custom-overtime-table td { padding: 4px 0px !important; height: 35px; }
+            .overtime-checked { font-size: 10px !important; letter-spacing: -1px; }
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 5. 화면 레이아웃 분할 ---
+# --- 4. 화면 레이아웃 분할 ---
 col1, col2 = st.columns([1, 1.5])
 
 # --- 왼쪽 영역: 야근 계획 등록/수정/취소 ---
 with col1:
     st.header(f"📝 야근 계획 등록 ({today_str})")
     
-    # ⭐️ PC/모바일 구분 없이 무조건 2칸씩 생성!
-    st.markdown("**1. 이름을 선택하세요**")
-    for i in range(0, len(members), 2):
-        row_cols = st.columns(2)
-        for j in range(2):
-            if i + j < len(members):
-                name = members[i+j]
-                btn_type = "primary" if name == st.session_state.selected_name else "secondary"
-                if row_cols[j].button(name, key=f"m_{name}", use_container_width=True, type=btn_type):
-                    st.session_state.selected_name = name
-                    st.rerun()
-            
+    # ⭐️ 복잡했던 버튼 로직이 라디오 버튼 하나로 싹 정리되었습니다!
+    selected_name = st.radio("**1. 이름을 선택하세요**", members, horizontal=True)
     st.write("") 
     
-    # ⭐️ PC/모바일 구분 없이 무조건 2칸씩 생성!
-    st.markdown("**2. 종료 시간을 선택하세요**")
-    for i in range(0, len(time_slots), 2):
-        row_cols = st.columns(2)
-        for j in range(2):
-            if i + j < len(time_slots):
-                t_slot = time_slots[i+j]
-                btn_type = "primary" if t_slot == st.session_state.selected_end_time else "secondary"
-                if row_cols[j].button(t_slot, key=f"t_{t_slot}", use_container_width=True, type=btn_type):
-                    st.session_state.selected_end_time = t_slot
-                    st.rerun()
-            
+    selected_end_time = st.radio("**2. 종료 시간을 선택하세요**", time_slots, horizontal=True)
     st.write("") 
     
-    # 등록/취소 버튼 영역
+    # 등록/취소 버튼 (이건 2칸짜리 묶음 유지)
     btn_cols = st.columns(2)
     
     with btn_cols[0]:
-        if st.button(f"🚀 {st.session_state.selected_name} 등록/수정", type="primary", use_container_width=True):
+        if st.button(f"🚀 {selected_name} 등록/수정", type="primary", use_container_width=True):
             conn = sqlite3.connect("overtime.db")
             cursor = conn.cursor()
             
-            cursor.execute("SELECT id FROM overtime WHERE name=? AND date=?", (st.session_state.selected_name, today_str))
+            cursor.execute("SELECT id FROM overtime WHERE name=? AND date=?", (selected_name, today_str))
             record = cursor.fetchone()
             
             if record:
-                cursor.execute("UPDATE overtime SET end_time=? WHERE id=?", (st.session_state.selected_end_time, record[0]))
+                cursor.execute("UPDATE overtime SET end_time=? WHERE id=?", (selected_end_time, record[0]))
                 st.success(f"🔄 변경 완료!")
             else:
                 cursor.execute("INSERT INTO overtime (name, date, end_time) VALUES (?, ?, ?)", 
-                               (st.session_state.selected_name, today_str, st.session_state.selected_end_time))
+                               (selected_name, today_str, selected_end_time))
                 st.success(f"🎉 등록 완료!")
             
             conn.commit()
@@ -163,11 +141,11 @@ with col1:
             st.rerun()
             
     with btn_cols[1]:
-        if st.button(f"🗑️ {st.session_state.selected_name} 취소", type="secondary", use_container_width=True):
+        if st.button(f"🗑️ {selected_name} 취소", type="secondary", use_container_width=True):
             conn = sqlite3.connect("overtime.db")
             cursor = conn.cursor()
             
-            cursor.execute("DELETE FROM overtime WHERE name=? AND date=?", (st.session_state.selected_name, today_str))
+            cursor.execute("DELETE FROM overtime WHERE name=? AND date=?", (selected_name, today_str))
             
             if cursor.rowcount > 0:
                 st.warning(f"🗑️ 취소 완료!")
@@ -221,7 +199,7 @@ with col2:
         grid_df.to_excel(writer, sheet_name='야근계획', index=True)
     
     st.download_button(
-        label="📥 현재 현황 엑셀 파일로 다운로드",
+        label=f"📥 {view_str} 현황 다운로드",
         data=excel_buffer.getvalue(),
         file_name=f"야근계획_{view_str}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
