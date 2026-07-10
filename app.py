@@ -38,33 +38,38 @@ if "selected_name" not in st.session_state:
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
 
-# --- 4. CSS 스타일 주입 (가로 스크롤 방지 및 비율 최적화) ---
+# --- 4. CSS 스타일 주입 (잘림 방지 & 그리드 최적화) ---
 st.markdown("""
     <style>
-        /* ⭐️ 전체 앱 가로 스크롤 원천 차단 */
-        .stApp, .block-container {
-            overflow-x: hidden !important;
-            max-width: 100vw !important;
-        }
-
-        /* ⭐️ 모바일(768px 이하) 2열 버튼 폭 최적화 */
+        /* ⭐️ 1. 모바일 2열 배치를 계산이 필요 없는 완벽한 Grid(격자)로 변경 */
         @media (max-width: 768px) {
-            div[data-testid="stHorizontalBlock"] div[data-testid="stHorizontalBlock"] {
-                display: flex !important;
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                gap: 8px !important; /* 버튼 사이 간격 8px 고정 */
+            /* 왼쪽 폼 영역의 가로 블록을 반반 격자로 설정 */
+            div[data-testid="column"]:first-of-type div[data-testid="stHorizontalBlock"] {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important; /* 무조건 정확히 1:1 비율로 나눔 */
+                gap: 8px !important; /* 버튼 사이 간격 */
                 width: 100% !important;
             }
-            div[data-testid="stHorizontalBlock"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-                /* 50%에서 간격(8px)의 절반을 빼주어 100%를 넘지 않게 계산 */
-                width: calc(50% - 4px) !important;
-                flex: 1 1 calc(50% - 4px) !important;
-                min-width: 0 !important; /* 50% 강제 고정을 풀어 화면 밖으로 밀리는 현상 방지 */
+            /* 격자 안의 컬럼들은 100% 꽉 채우도록 설정 (계산 오차 제로) */
+            div[data-testid="column"]:first-of-type div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                width: 100% !important;
+                min-width: 0 !important; /* 화면 밖으로 밀어내는 성질 차단 */
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            /* ⭐️ 2. 버튼이 잘리는 근본 원인 해결: 글자가 길면 버튼을 찢지 않고 줄바꿈 허용 */
+            div[data-testid="column"]:first-of-type button {
+                width: 100% !important;
+                white-space: normal !important; /* 글씨 줄바꿈 허용 */
+                word-break: break-word !important; 
+                height: auto !important; /* 줄바꿈 시 버튼 높이 자동 조절 */
+                min-height: 42px !important;
+                padding: 6px 4px !important;
+                font-size: 13px !important;
             }
         }
 
-        /* 표 반응형 스타일 */
+        /* ⭐️ 3. 표 반응형 (한 화면에 쏙) */
         .custom-overtime-table {
             width: 100%;
             border-collapse: collapse;
@@ -82,11 +87,11 @@ st.markdown("""
         .overtime-checked { background-color: #fff5f5; color: #ff4b4b; font-weight: bold; }
         
         @media (max-width: 768px) {
-            .custom-overtime-table { font-size: 10px !important; } /* 글자 크기를 살짝 더 줄여서 표 삐져나감 방지 */
+            .custom-overtime-table { font-size: 11px !important; }
             .custom-overtime-table th, .custom-overtime-table td { 
-                padding: 4px 1px !important; 
+                padding: 4px 0px !important; 
                 height: 35px; 
-                word-break: keep-all; /* 단어가 잘리지 않고 좁은 칸에 맞게 줄바꿈되도록 허용 */
+                word-break: keep-all; 
             }
             .overtime-checked { font-size: 10px !important; letter-spacing: -1px; }
         }
