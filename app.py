@@ -32,19 +32,19 @@ def init_db():
 
 init_db()
 
-# --- 3. CSS 스타일 주입 (라디오 버튼을 일반 버튼처럼 완벽 위장) ---
+# --- 3. CSS 스타일 주입 (라디오 버튼 완벽 위장 & 전체 색상 변경) ---
 st.markdown("""
     <style>
-        /* ⭐️ 기본 라디오버튼의 동그라미 선택 마크 아예 숨기기 */
-        div[role="radiogroup"] label > div:first-child {
+        /* ⭐️ 1. 기본 라디오버튼의 동그라미 아이콘 아예 숨기기 */
+        div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
             display: none !important;
         }
         
-        /* ⭐️ 라디오 버튼을 일반 네모 버튼처럼 디자인 */
-        div[role="radiogroup"] label {
+        /* ⭐️ 2. 라디오 버튼을 큼직한 일반 네모 버튼처럼 디자인 */
+        div[data-testid="stRadio"] div[role="radiogroup"] label {
             background-color: #ffffff;
             border: 1px solid #dcdde1;
-            padding: 8px 16px;
+            padding: 12px 16px;
             border-radius: 8px;
             margin-right: 8px;
             margin-bottom: 8px;
@@ -53,32 +53,34 @@ st.markdown("""
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             display: flex;
             justify-content: center;
+            align-items: center;
         }
         
-        /* 선택되었을 때 (빨간색 강조) */
-        div[role="radiogroup"] label[data-checked="true"] {
+        /* ⭐️ 3. 선택되었을 때 (버튼 전체 배경색과 글자색 변경) */
+        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
             background-color: #ff4b4b !important;
             border-color: #ff4b4b !important;
         }
-        div[role="radiogroup"] label[data-checked="true"] p {
+        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) div,
+        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {
             color: #ffffff !important;
-            font-weight: bold;
+            font-weight: bold !important;
         }
 
-        /* ⭐️ 모바일(768px 이하)에서 버튼을 무조건 2칸으로 꽉 채우기 */
+        /* ⭐️ 4. 모바일(768px 이하)에서 버튼을 무조건 2칸으로 꽉 채우기 */
         @media (max-width: 768px) {
-            div[role="radiogroup"] {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 6px;
+            div[data-testid="stRadio"] div[role="radiogroup"] {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                gap: 8px !important;
             }
-            div[role="radiogroup"] label {
-                flex: 1 1 calc(50% - 12px) !important; /* 강제로 2칸씩 맞춤 */
+            div[data-testid="stRadio"] div[role="radiogroup"] label {
+                flex: 1 1 calc(50% - 8px) !important; /* 강제로 2칸(50%)씩 꽉 채움 */
                 margin: 0 !important;
             }
         }
 
-        /* 표 반응형 스타일 */
+        /* 표 반응형 스타일 (유지) */
         .custom-overtime-table {
             width: 100%;
             border-collapse: collapse;
@@ -110,14 +112,15 @@ col1, col2 = st.columns([1, 1.5])
 with col1:
     st.header(f"📝 야근 계획 등록 ({today_str})")
     
-    # ⭐️ 복잡했던 버튼 로직이 라디오 버튼 하나로 싹 정리되었습니다!
+    # 이름 라디오 위젯
     selected_name = st.radio("**1. 이름을 선택하세요**", members, horizontal=True)
     st.write("") 
     
+    # 시간 라디오 위젯
     selected_end_time = st.radio("**2. 종료 시간을 선택하세요**", time_slots, horizontal=True)
     st.write("") 
     
-    # 등록/취소 버튼 (이건 2칸짜리 묶음 유지)
+    # 등록/취소 버튼
     btn_cols = st.columns(2)
     
     with btn_cols[0]:
