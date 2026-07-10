@@ -3,7 +3,8 @@ import pandas as pd
 import datetime
 import io
 import sqlite3
-import openpyxl  # ⭐️ 정밀한 엑셀 위치 제어를 위해 도입
+import openpyxl
+import os
 
 # 모바일/PC 넓게 쓰기 설정
 st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
@@ -39,7 +40,7 @@ if "selected_name" not in st.session_state:
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
 
-# --- 4. CSS 스타일 주입 (기존 레이아웃 유지) ---
+# --- 4. CSS 스타일 주입 ---
 st.markdown("""
     <style>
         .stApp, .block-container { overflow-x: hidden !important; max-width: 100vw !important; }
@@ -93,7 +94,6 @@ with col1:
             
     st.write("") 
     
-    # 등록/취소 버튼
     btn_cols = st.columns(2)
     with btn_cols[0]:
         if st.button(f"🚀 {st.session_state.selected_name} 등록/수정", type="primary", use_container_width=True):
@@ -144,61 +144,49 @@ with col2:
         if end_t in grid_df.index and name in grid_df.columns:
             grid_df.loc[end_t, name] = "✔️ 야근"
                 
-    html_code = f'<table class="custom-overtime-table">'
-    html_code += '<thead><tr><th>시간</th>'
-    for col in grid_df.columns:
-        html_code += f'<th>{col}</th>'
+    html_code = f'<table class="custom-overtime-table"><thead><tr><th>시간</th>'
+    for col in grid_df.columns: html_code += f'<th>{col}</th>'
     html_code += '</tr></thead><tbody>'
-    
     for index, row in grid_df.iterrows():
         html_code += f'<tr><th>{index}</th>'
         for val in row:
-            if val == "✔️ 야근":
-                html_code += f'<td class="overtime-checked">{val}</td>'
-            else:
-                html_code += f'<td>{val}</td>'
+            html_code += f'<td class="overtime-checked">{val}</td>' if val == "✔️ 야근" else f'<td>{val}</td>'
         html_code += '</tr>'
     html_code += '</tbody></table>'
-    
     st.markdown(html_code, unsafe_allow_html=True)
     st.write("") 
     
-    # ⭐️ 6. 사용자 지정 엑셀 서식 파일 동적 생성 로직
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "야근계획"
+    # ⭐️ 6. 원본 엑셀 템플릿 파일 로드 및 데이터 입력 로직
+    template_path = "template.xlsx"
     
-    # 기본 서식 가이드라인 라벨링 (상단 공백 채우기)
-    ws['B2'] = "시간외근무"
-    ws['B3'] = "소속부서"
-    ws['D3'] = "T/S TEAM"
-    ws['E3'] = "근무일"
-    ws['F3'] = view_str
-    
-    # 7행 헤더 셋팅
-    ws['B7'] = "No."
-    ws['C7'] = "성명"
-    ws['E7'] = "신청시간"
-    ws['F7'] = "근무사유"
-    
-    # ⭐️ C열 8행부터 데이터 차례대로 기입 (종료시간 앞에는 17:30 ~ 추가)
-    start_row = 8
-    for idx, (name, end_t) in enumerate(records, start=1):
-        ws.cell(row=start_row, column=2, value=idx)                             # B열: No.
-        ws.cell(row=start_row, column=3, value=name)                            # C열: 성명 (8행부터 시작)
-        ws.cell(row=start_row, column=5, value=f"17:30 ~ {end_t}")              # E열: 신청시간 포맷 변경
-        ws.cell(row=start_row, column=6, value="업무 연장")                     # F열: 근무사유 (기본값)
-        start_row += 1
+    if os.path.exists(template_path):
+        # 원본 양식 파일을 그대로 열기
+        wb = openpyxl.load_workbook(template_path)
+        ws = wb.active
         
-    # 바이너리 버퍼로 변환하여 다운로드 연동
-    excel_buffer = io.BytesIO()
-    wb.save(excel_buffer)
-    excel_buffer.seek(0)
-    
-    st.download_button(
-        label=f"📥 {view_str} 현황 다운로드 (지정 양식)",
-        data=excel_buffer.getvalue(),
-        file_name=f"야근계획_{view_str}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True
-    )
+        # 원본 양식의 F3 셀에 조회된 날짜 동적 업데이트
+        ws['F3'] = view_str
+        
+        # C열 8행부터 순서대로 삽입 (사용자 제출 원본 서식 구조 기준)
+        start_row = 8
+        for idx, (name, end_t) in enumerate(records, start=1):
+            ws.cell(row=start_row, column=2, value=idx)                             # B열: No.
+            ws.cell(row=start_row, column=3, value=name)                            # C열: 성명
+            ws.cell(row=start_row, column=5, value=f"17:30 ~ {end_t}")              # E열: 신청시간
+            ws.cell(row=start_row, column=6, value="업무 연장")                     # F열: 근무사유
+            start_row += 1
+            
+        excel_buffer = io.BytesIO()
+        wb.save(excel_buffer)
+        excel_buffer.seek(0)
+        
+        st.download_button(
+            label=f"📥 {view_str} 양식 엑셀 다운로드",
+            data=excel_buffer.getvalue(),
+            file_name=f"야근계획서_{view_str}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+    else:
+        # 파일이 없을 때 경고 메시지 출력
+        st.error("⚠️ 폴더 내에 'template.xlsx' 원본 양식 파일이 존재하지 않습니다. 깃허브에 양식 파일을 먼저 업로드해 주세요!")
