@@ -41,17 +41,24 @@ if "selected_end_time" not in st.session_state:
 # --- 4. CSS 스타일 주입 ---
 st.markdown("""
     <style>
-        /* ⭐️ 모바일에서 '내부' 컬럼들(버튼 묶음)이 세로 1줄로 깨지는 것을 완벽 차단 */
+        /* ⭐️ 1. 앱 전체에서 가로 스크롤(옆으로 밀림) 원천 차단 */
+        .stApp, .block-container {
+            overflow-x: hidden !important;
+        }
+
+        /* ⭐️ 2. 모바일(768px 이하)에서 버튼 2열 여백 계산 완벽 최적화 */
         @media (max-width: 768px) {
             div[data-testid="stHorizontalBlock"] div[data-testid="stHorizontalBlock"] {
                 display: flex !important;
                 flex-direction: row !important;
                 flex-wrap: nowrap !important;
+                gap: 8px !important; /* 버튼 사이 간격 8px */
             }
             div[data-testid="stHorizontalBlock"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-                width: 50% !important;
-                flex: 1 1 50% !important;
-                min-width: 50% !important;
+                /* (50% + 50%)가 100%를 넘지 않도록 간격의 절반(4px)씩을 빼서 정확히 맞춤 */
+                width: calc(50% - 4px) !important;
+                flex: 1 1 calc(50% - 4px) !important;
+                min-width: calc(50% - 4px) !important;
             }
         }
 
@@ -87,12 +94,10 @@ col1, col2 = st.columns([1, 1.5])
 with col1:
     st.header(f"📝 야근 계획 등록 ({today_str})")
     
-    # ⭐️ 1. 이름 버튼 렌더링 (빈 공간 유지로 홀수 늘어남 방지)
     st.markdown("**1. 이름을 선택하세요**")
     for i in range(0, len(members), 2):
         row_cols = st.columns(2)
         
-        # 첫 번째 열 버튼
         if i < len(members):
             name = members[i]
             btn_type = "primary" if name == st.session_state.selected_name else "secondary"
@@ -100,7 +105,6 @@ with col1:
                 st.session_state.selected_name = name
                 st.rerun()
                 
-        # 두 번째 열 버튼 (마지막 홀수일 땐 이 부분이 빈칸으로 남아 크기를 지켜줌)
         if i + 1 < len(members):
             name = members[i+1]
             btn_type = "primary" if name == st.session_state.selected_name else "secondary"
@@ -110,7 +114,6 @@ with col1:
             
     st.write("") 
     
-    # ⭐️ 2. 시간 버튼 렌더링 (위와 동일한 로직)
     st.markdown("**2. 종료 시간을 선택하세요**")
     for i in range(0, len(time_slots), 2):
         row_cols = st.columns(2)
