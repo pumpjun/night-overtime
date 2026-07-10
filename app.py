@@ -8,7 +8,7 @@ import os
 
 # 모바일/PC 넓게 쓰기 설정
 st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
-st.title("🌙 T/S 야근 계획 관리 시스템")
+st.title("🌙 야근 계획 관리 시스템")
 
 # --- 1. 고정 데이터 정의 ---
 members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이"]
@@ -40,10 +40,25 @@ if "selected_name" not in st.session_state:
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
 
-# --- 4. CSS 스타일 주입 ---
+# --- 4. CSS 스타일 주입 (제목 1줄 고정 추가) ---
 st.markdown("""
     <style>
         .stApp, .block-container { overflow-x: hidden !important; max-width: 100vw !important; }
+        
+        /* ⭐️ 모바일 환경에서 제목(h1, h2) 무조건 1줄 고정 및 자동 축소 */
+        @media (max-width: 768px) {
+            h1 {
+                white-space: nowrap !important; /* 줄바꿈 강제 금지 */
+                font-size: 5.5vw !important; /* 화면 가로폭(vw)에 맞춰 글자 크기 축소 */
+                letter-spacing: -0.5px !important;
+            }
+            h2 {
+                white-space: nowrap !important;
+                font-size: 4.5vw !important;
+                letter-spacing: -0.5px !important;
+            }
+        }
+
         .custom-overtime-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 15px; table-layout: fixed; }
         .custom-overtime-table th, .custom-overtime-table td { border: 1px solid #dcdde1; padding: 10px 2px; text-align: center !important; vertical-align: middle !important; }
         .custom-overtime-table th { background-color: #f0f2f6; color: #31333F; font-weight: bold; }
@@ -156,24 +171,21 @@ with col2:
     st.markdown(html_code, unsafe_allow_html=True)
     st.write("") 
     
-    # ⭐️ 6. 원본 엑셀 템플릿 파일 로드 및 데이터 입력 로직
+    # 원본 엑셀 템플릿 파일 로드 및 데이터 입력 로직
     template_path = "template.xlsx"
     
     if os.path.exists(template_path):
-        # 원본 양식 파일을 그대로 열기
         wb = openpyxl.load_workbook(template_path)
         ws = wb.active
         
-        # 원본 양식의 F3 셀에 조회된 날짜 동적 업데이트
         ws['F3'] = view_str
         
-        # C열 8행부터 순서대로 삽입 (사용자 제출 원본 서식 구조 기준)
         start_row = 8
         for idx, (name, end_t) in enumerate(records, start=1):
-            ws.cell(row=start_row, column=2, value=idx)                             # B열: No.
-            ws.cell(row=start_row, column=3, value=name)                            # C열: 성명
-            ws.cell(row=start_row, column=5, value=f"17:30 ~ {end_t}")              # E열: 신청시간
-            ws.cell(row=start_row, column=6, value="업무 연장")                     # F열: 근무사유
+            ws.cell(row=start_row, column=2, value=idx)                             
+            ws.cell(row=start_row, column=3, value=name)                            
+            ws.cell(row=start_row, column=5, value=f"17:30 ~ {end_t}")              
+            ws.cell(row=start_row, column=6, value="업무 연장")                     
             start_row += 1
             
         excel_buffer = io.BytesIO()
@@ -188,5 +200,4 @@ with col2:
             use_container_width=True
         )
     else:
-        # 파일이 없을 때 경고 메시지 출력
         st.error("⚠️ 폴더 내에 'template.xlsx' 원본 양식 파일이 존재하지 않습니다. 깃허브에 양식 파일을 먼저 업로드해 주세요!")
