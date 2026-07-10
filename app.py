@@ -40,7 +40,7 @@ if "selected_name" not in st.session_state:
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
 
-# --- 4. CSS 스타일 주입 (제목 1줄 고정 추가) ---
+# --- 4. CSS 스타일 주입 (제목 및 표 내용 1줄 고정) ---
 st.markdown("""
     <style>
         .stApp, .block-container { overflow-x: hidden !important; max-width: 100vw !important; }
@@ -48,8 +48,8 @@ st.markdown("""
         /* ⭐️ 모바일 환경에서 제목(h1, h2) 무조건 1줄 고정 및 자동 축소 */
         @media (max-width: 768px) {
             h1 {
-                white-space: nowrap !important; /* 줄바꿈 강제 금지 */
-                font-size: 5.5vw !important; /* 화면 가로폭(vw)에 맞춰 글자 크기 축소 */
+                white-space: nowrap !important;
+                font-size: 5.5vw !important;
                 letter-spacing: -0.5px !important;
             }
             h2 {
@@ -63,6 +63,21 @@ st.markdown("""
         .custom-overtime-table th, .custom-overtime-table td { border: 1px solid #dcdde1; padding: 10px 2px; text-align: center !important; vertical-align: middle !important; }
         .custom-overtime-table th { background-color: #f0f2f6; color: #31333F; font-weight: bold; }
         .overtime-checked { background-color: #fff5f5; color: #ff4b4b; font-weight: bold; }
+        
+        /* ⭐️ 모바일 환경에서 표 내부 글씨 1줄 고정 및 자동 축소 */
+        @media (max-width: 768px) {
+            .custom-overtime-table { font-size: 3vw !important; } /* 글자 크기를 화면 폭에 맞춰 유연하게 조절 */
+            .custom-overtime-table th, .custom-overtime-table td { 
+                padding: 4px 0px !important; 
+                height: 35px; 
+                white-space: nowrap !important; /* ⭐️ 표 안의 글자 줄바꿈 강제 금지 (무조건 1줄) */
+                letter-spacing: -0.5px !important; /* 좁은 공간을 위해 자간 살짝 축소 */
+            }
+            .overtime-checked { 
+                font-size: 2.8vw !important; /* ✔️ 야근 글씨도 화면 비율에 맞춤 */
+                letter-spacing: -1px !important; 
+            }
+        }
     </style>
 """, unsafe_allow_html=True)
 
