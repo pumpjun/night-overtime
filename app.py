@@ -38,38 +38,48 @@ if "selected_name" not in st.session_state:
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
 
-# --- 4. CSS 스타일 주입 (잘림 방지 & 그리드 최적화) ---
+# --- 4. CSS 스타일 주입 (스트림릿 자바스크립트 명령 무력화 버전) ---
 st.markdown("""
     <style>
-        /* ⭐️ 1. 모바일 2열 배치를 계산이 필요 없는 완벽한 Grid(격자)로 변경 */
+        /* ⭐️ 전체 앱 가로 스크롤 원천 차단 */
+        .stApp, .block-container {
+            overflow-x: hidden !important;
+            max-width: 100vw !important;
+        }
+
+        /* ⭐️ 모바일(768px 이하)에서 스트림릿이 강제로 1줄로 세우는 걸 온 힘을 다해 방어 */
         @media (max-width: 768px) {
-            /* 왼쪽 폼 영역의 가로 블록을 반반 격자로 설정 */
+            /* 버튼 두 개가 들어가는 가로 블록을 무조건 '반반 그리드'로 덮어쓰기 */
             div[data-testid="column"]:first-of-type div[data-testid="stHorizontalBlock"] {
                 display: grid !important;
-                grid-template-columns: repeat(2, 1fr) !important; /* 무조건 정확히 1:1 비율로 나눔 */
-                gap: 8px !important; /* 버튼 사이 간격 */
+                grid-template-columns: repeat(2, 1fr) !important; /* 정확히 50%씩 반반 고정 */
+                gap: 8px !important;
                 width: 100% !important;
+                flex-direction: row !important; /* 세로로 정렬하라는 스트림릿 명령 차단 */
+                flex-wrap: nowrap !important;
             }
-            /* 격자 안의 컬럼들은 100% 꽉 채우도록 설정 (계산 오차 제로) */
+            
+            /* 그리드 자식 요소(컬럼)들이 깨지지 않도록 강제 설정 */
             div[data-testid="column"]:first-of-type div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
                 width: 100% !important;
-                min-width: 0 !important; /* 화면 밖으로 밀어내는 성질 차단 */
+                max-width: 100% !important;
+                min-width: 0 !important;
+                flex: 1 1 0% !important;
                 margin: 0 !important;
                 padding: 0 !important;
             }
-            /* ⭐️ 2. 버튼이 잘리는 근본 원인 해결: 글자가 길면 버튼을 찢지 않고 줄바꿈 허용 */
+            
+            /* 버튼 글씨가 길어서 밖으로 튕겨 나가는 현상 방지 */
             div[data-testid="column"]:first-of-type button {
                 width: 100% !important;
-                white-space: normal !important; /* 글씨 줄바꿈 허용 */
-                word-break: break-word !important; 
-                height: auto !important; /* 줄바꿈 시 버튼 높이 자동 조절 */
-                min-height: 42px !important;
-                padding: 6px 4px !important;
+                white-space: normal !important;
+                word-break: break-all !important;
                 font-size: 13px !important;
+                padding: 6px 4px !important;
             }
         }
 
-        /* ⭐️ 3. 표 반응형 (한 화면에 쏙) */
+        /* 표 반응형 스타일 */
         .custom-overtime-table {
             width: 100%;
             border-collapse: collapse;
