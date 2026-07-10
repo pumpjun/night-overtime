@@ -40,43 +40,61 @@ if "selected_name" not in st.session_state:
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
 
-# --- 4. CSS 스타일 주입 (제목 및 표 내용 1줄 고정) ---
+# --- 4. CSS 스타일 주입 (버튼 강제 2열 완벽 해결) ---
 st.markdown("""
     <style>
+        /* 앱 전체 가로 스크롤 방지 */
         .stApp, .block-container { overflow-x: hidden !important; max-width: 100vw !important; }
         
-        /* ⭐️ 모바일 환경에서 제목(h1, h2) 무조건 1줄 고정 및 자동 축소 */
+        /* ⭐️ 제목 1줄 고정 */
         @media (max-width: 768px) {
-            h1 {
-                white-space: nowrap !important;
-                font-size: 5.5vw !important;
-                letter-spacing: -0.5px !important;
-            }
-            h2 {
-                white-space: nowrap !important;
-                font-size: 4.5vw !important;
-                letter-spacing: -0.5px !important;
-            }
+            h1 { white-space: nowrap !important; font-size: 5.5vw !important; letter-spacing: -0.5px !important; }
+            h2 { white-space: nowrap !important; font-size: 4.5vw !important; letter-spacing: -0.5px !important; }
         }
 
+        /* ⭐️ 표 1줄 고정 */
         .custom-overtime-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 15px; table-layout: fixed; }
         .custom-overtime-table th, .custom-overtime-table td { border: 1px solid #dcdde1; padding: 10px 2px; text-align: center !important; vertical-align: middle !important; }
         .custom-overtime-table th { background-color: #f0f2f6; color: #31333F; font-weight: bold; }
         .overtime-checked { background-color: #fff5f5; color: #ff4b4b; font-weight: bold; }
         
-        /* ⭐️ 모바일 환경에서 표 내부 글씨 1줄 고정 및 자동 축소 */
         @media (max-width: 768px) {
-            .custom-overtime-table { font-size: 3vw !important; } /* 글자 크기를 화면 폭에 맞춰 유연하게 조절 */
+            .custom-overtime-table { font-size: 3vw !important; }
             .custom-overtime-table th, .custom-overtime-table td { 
                 padding: 4px 0px !important; 
                 height: 35px; 
-                white-space: nowrap !important; /* ⭐️ 표 안의 글자 줄바꿈 강제 금지 (무조건 1줄) */
-                letter-spacing: -0.5px !important; /* 좁은 공간을 위해 자간 살짝 축소 */
+                white-space: nowrap !important; 
+                letter-spacing: -0.5px !important; 
             }
-            .overtime-checked { 
-                font-size: 2.8vw !important; /* ✔️ 야근 글씨도 화면 비율에 맞춤 */
-                letter-spacing: -1px !important; 
-            }
+            .overtime-checked { font-size: 2.8vw !important; letter-spacing: -1px !important; }
+        }
+
+        /* ⭐️ 버튼 강제 2열 배치 (핵심 무적 CSS) */
+        /* stVerticalBlock 안에 btn-grid라는 style 태그가 있으면 무조건 가로로 배치 */
+        div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+        }
+        
+        /* 버튼이 들어있는 각각의 컨테이너를 정확히 반반(50%)으로 쪼갬 */
+        div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:not(:has(style)) {
+            width: calc(50% - 4px) !important;
+            flex: 0 0 calc(50% - 4px) !important;
+            min-width: 0 !important; 
+        }
+        
+        /* 스타일 태그가 들어있는 빈 공간은 화면에서 완전히 삭제 */
+        div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:has(style) {
+            display: none !important;
+        }
+        
+        /* 버튼 글씨 줄바꿈 방지 및 자동 축소 */
+        div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) button {
+            white-space: nowrap !important;
+            height: auto !important;
+            min-height: 42px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -88,44 +106,33 @@ col1, col2 = st.columns([1, 1.5])
 with col1:
     st.header(f"📝 야근 계획 등록 ({today_str})")
     
+    # ⭐️ 1. 이름 버튼 묶음 (컨테이너 사용으로 1줄 깨짐 방지)
     st.markdown("**1. 이름을 선택하세요**")
-    for i in range(0, len(members), 2):
-        row_cols = st.columns(2)
-        if i < len(members):
-            name = members[i]
+    with st.container():
+        st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
+        for name in members:
             btn_type = "primary" if name == st.session_state.selected_name else "secondary"
-            if row_cols[0].button(name, key=f"m_{name}", use_container_width=True, type=btn_type):
+            if st.button(name, key=f"m_{name}", use_container_width=True, type=btn_type):
                 st.session_state.selected_name = name
                 st.rerun()
-        if i + 1 < len(members):
-            name = members[i+1]
-            btn_type = "primary" if name == st.session_state.selected_name else "secondary"
-            if row_cols[1].button(name, key=f"m_{name}", use_container_width=True, type=btn_type):
-                st.session_state.selected_name = name
-                st.rerun()
-            
+                
     st.write("") 
     
+    # ⭐️ 2. 시간 버튼 묶음
     st.markdown("**2. 종료 시간을 선택하세요**")
-    for i in range(0, len(time_slots), 2):
-        row_cols = st.columns(2)
-        if i < len(time_slots):
-            t_slot = time_slots[i]
+    with st.container():
+        st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
+        for t_slot in time_slots:
             btn_type = "primary" if t_slot == st.session_state.selected_end_time else "secondary"
-            if row_cols[0].button(t_slot, key=f"t_{t_slot}", use_container_width=True, type=btn_type):
+            if st.button(t_slot, key=f"t_{t_slot}", use_container_width=True, type=btn_type):
                 st.session_state.selected_end_time = t_slot
                 st.rerun()
-        if i + 1 < len(time_slots):
-            t_slot = time_slots[i+1]
-            btn_type = "primary" if t_slot == st.session_state.selected_end_time else "secondary"
-            if row_cols[1].button(t_slot, key=f"t_{t_slot}", use_container_width=True, type=btn_type):
-                st.session_state.selected_end_time = t_slot
-                st.rerun()
-            
+                
     st.write("") 
     
-    btn_cols = st.columns(2)
-    with btn_cols[0]:
+    # ⭐️ 3. 등록/취소 버튼 묶음
+    with st.container():
+        st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
         if st.button(f"🚀 {st.session_state.selected_name} 등록/수정", type="primary", use_container_width=True):
             conn = sqlite3.connect("overtime.db")
             cursor = conn.cursor()
@@ -142,7 +149,6 @@ with col1:
             conn.close()
             st.rerun()
             
-    with btn_cols[1]:
         if st.button(f"🗑️ {st.session_state.selected_name} 취소", type="secondary", use_container_width=True):
             conn = sqlite3.connect("overtime.db")
             cursor = conn.cursor()
@@ -186,7 +192,7 @@ with col2:
     st.markdown(html_code, unsafe_allow_html=True)
     st.write("") 
     
-    # 원본 엑셀 템플릿 파일 로드 및 데이터 입력 로직
+    # ⭐️ 원본 엑셀 템플릿 파일 로드 및 데이터 입력 로직
     template_path = "template.xlsx"
     
     if os.path.exists(template_path):
