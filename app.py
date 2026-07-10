@@ -38,25 +38,9 @@ if "selected_name" not in st.session_state:
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
 
-# --- 4. CSS 스타일 주입 (스트림릿 레이아웃 붕괴 완벽 차단) ---
+# --- 4. CSS 스타일 주입 (표 정렬만 담당) ---
 st.markdown("""
     <style>
-        /* ⭐️ 왼쪽 폼 영역 안에 있는 가로 블록은 세로 붕괴(Stacking) 절대 금지 */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child div[data-testid="stHorizontalBlock"] {
-            flex-direction: row !important;
-            flex-wrap: wrap !important;
-        }
-
-        /* ⭐️ PC창 축소 및 모바일 기기 (1024px 이하) */
-        @media (max-width: 1024px) {
-            /* 폼 안의 모든 버튼 칸을 무조건 50%(2칸)로 고정 */
-            div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-                width: calc(50% - 0.4rem) !important;
-                min-width: calc(50% - 0.4rem) !important;
-                flex: 1 1 calc(50% - 0.4rem) !important;
-            }
-        }
-
         /* 표 반응형 스타일 (한 화면 쏙 안착) */
         .custom-overtime-table {
             width: 100%;
@@ -90,7 +74,7 @@ st.markdown("""
             font-weight: bold;
         }
         
-        @media (max-width: 1024px) {
+        @media (max-width: 768px) {
             .custom-overtime-table {
                 font-size: 11px !important; 
             }
@@ -113,35 +97,35 @@ col1, col2 = st.columns([1, 1.5])
 with col1:
     st.header(f"📝 야근 계획 등록 ({today_str})")
     
-    # ⭐️ 이름 버튼: 파이썬 로직에서부터 4개씩 잘라서 출력 (레이아웃 순서 깨짐 방지)
+    # ⭐️ 이름 버튼: 2칸짜리 묶음(st.columns(2))을 반복 생성하여 모바일에서도 강제로 2열 정렬
     st.markdown("**1. 이름을 선택하세요**")
-    for i in range(0, len(members), 4):
-        cols_m = st.columns(4)
-        for j in range(4):
+    for i in range(0, len(members), 2):
+        row_cols = st.columns(2)
+        for j in range(2):
             if i + j < len(members):
                 name = members[i+j]
                 btn_type = "primary" if name == st.session_state.selected_name else "secondary"
-                if cols_m[j].button(name, key=f"m_{name}", use_container_width=True, type=btn_type):
+                if row_cols[j].button(name, key=f"m_{name}", use_container_width=True, type=btn_type):
                     st.session_state.selected_name = name
                     st.rerun()
             
     st.write("") 
     
-    # ⭐️ 시간 버튼: 마찬가지로 4개씩 잘라서 출력
+    # ⭐️ 시간 버튼: 마찬가지로 2칸짜리 묶음을 반복 생성하여 강제 2열 정렬
     st.markdown("**2. 종료 시간을 선택하세요**")
-    for i in range(0, len(time_slots), 4):
-        cols_t = st.columns(4)
-        for j in range(4):
+    for i window in range(0, len(time_slots), 2):
+        row_cols = st.columns(2)
+        for j in range(2):
             if i + j < len(time_slots):
                 t_slot = time_slots[i+j]
                 btn_type = "primary" if t_slot == st.session_state.selected_end_time else "secondary"
-                if cols_t[j].button(t_slot, key=f"t_{t_slot}", use_container_width=True, type=btn_type):
+                if row_cols[j].button(t_slot, key=f"t_{t_slot}", use_container_width=True, type=btn_type):
                     st.session_state.selected_end_time = t_slot
                     st.rerun()
             
     st.write("") 
     
-    # 등록/취소 버튼은 2개 묶음으로 생성 (항상 50% 폭 유지됨)
+    # 등록/취소 버튼 영역 (반반 유지)
     btn_cols = st.columns(2)
     
     with btn_cols[0]:
@@ -223,7 +207,7 @@ with col2:
         grid_df.to_excel(writer, sheet_name='야근계획', index=True)
     
     st.download_button(
-        label=f"📥 {view_str} 현황 엑셀 파일로 다운로드",
+        label="📥 현재 현황 엑셀 파일로 다운로드",
         data=excel_buffer.getvalue(),
         file_name=f"야근계획_{view_str}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
