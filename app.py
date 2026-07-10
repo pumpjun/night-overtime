@@ -32,55 +32,30 @@ def init_db():
 
 init_db()
 
-# --- 3. CSS 스타일 주입 (라디오 버튼 완벽 위장 & 전체 색상 변경) ---
+# --- 3. 상태 관리 ---
+if "selected_name" not in st.session_state:
+    st.session_state.selected_name = members[0]
+if "selected_end_time" not in st.session_state:
+    st.session_state.selected_end_time = time_slots[0]
+
+# --- 4. CSS 스타일 주입 ---
 st.markdown("""
     <style>
-        /* ⭐️ 1. 기본 라디오버튼의 동그라미 아이콘 아예 숨기기 */
-        div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
-            display: none !important;
-        }
-        
-        /* ⭐️ 2. 라디오 버튼을 큼직한 일반 네모 버튼처럼 디자인 */
-        div[data-testid="stRadio"] div[role="radiogroup"] label {
-            background-color: #ffffff;
-            border: 1px solid #dcdde1;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-right: 8px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        /* ⭐️ 3. 선택되었을 때 (버튼 전체 배경색과 글자색 변경) */
-        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-            background-color: #ff4b4b !important;
-            border-color: #ff4b4b !important;
-        }
-        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) div,
-        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {
-            color: #ffffff !important;
-            font-weight: bold !important;
-        }
-
-        /* ⭐️ 4. 모바일(768px 이하)에서 버튼을 무조건 2칸으로 꽉 채우기 */
+        /* ⭐️ 모바일에서 '내부' 컬럼들(버튼 묶음)이 세로 1줄로 깨지는 것을 완벽 차단 */
         @media (max-width: 768px) {
-            div[data-testid="stRadio"] div[role="radiogroup"] {
+            div[data-testid="stHorizontalBlock"] div[data-testid="stHorizontalBlock"] {
                 display: flex !important;
-                flex-wrap: wrap !important;
-                gap: 8px !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
             }
-            div[data-testid="stRadio"] div[role="radiogroup"] label {
-                flex: 1 1 calc(50% - 8px) !important; /* 강제로 2칸(50%)씩 꽉 채움 */
-                margin: 0 !important;
+            div[data-testid="stHorizontalBlock"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                width: 50% !important;
+                flex: 1 1 50% !important;
+                min-width: 50% !important;
             }
         }
 
-        /* 표 반응형 스타일 (유지) */
+        /* 표 반응형 스타일 */
         .custom-overtime-table {
             width: 100%;
             border-collapse: collapse;
@@ -105,38 +80,74 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. 화면 레이아웃 분할 ---
+# --- 5. 화면 레이아웃 분할 ---
 col1, col2 = st.columns([1, 1.5])
 
 # --- 왼쪽 영역: 야근 계획 등록/수정/취소 ---
 with col1:
     st.header(f"📝 야근 계획 등록 ({today_str})")
     
-    # 이름 라디오 위젯
-    selected_name = st.radio("**1. 이름을 선택하세요**", members, horizontal=True)
+    # ⭐️ 1. 이름 버튼 렌더링 (빈 공간 유지로 홀수 늘어남 방지)
+    st.markdown("**1. 이름을 선택하세요**")
+    for i in range(0, len(members), 2):
+        row_cols = st.columns(2)
+        
+        # 첫 번째 열 버튼
+        if i < len(members):
+            name = members[i]
+            btn_type = "primary" if name == st.session_state.selected_name else "secondary"
+            if row_cols[0].button(name, key=f"m_{name}", use_container_width=True, type=btn_type):
+                st.session_state.selected_name = name
+                st.rerun()
+                
+        # 두 번째 열 버튼 (마지막 홀수일 땐 이 부분이 빈칸으로 남아 크기를 지켜줌)
+        if i + 1 < len(members):
+            name = members[i+1]
+            btn_type = "primary" if name == st.session_state.selected_name else "secondary"
+            if row_cols[1].button(name, key=f"m_{name}", use_container_width=True, type=btn_type):
+                st.session_state.selected_name = name
+                st.rerun()
+            
     st.write("") 
     
-    # 시간 라디오 위젯
-    selected_end_time = st.radio("**2. 종료 시간을 선택하세요**", time_slots, horizontal=True)
+    # ⭐️ 2. 시간 버튼 렌더링 (위와 동일한 로직)
+    st.markdown("**2. 종료 시간을 선택하세요**")
+    for i in range(0, len(time_slots), 2):
+        row_cols = st.columns(2)
+        
+        if i < len(time_slots):
+            t_slot = time_slots[i]
+            btn_type = "primary" if t_slot == st.session_state.selected_end_time else "secondary"
+            if row_cols[0].button(t_slot, key=f"t_{t_slot}", use_container_width=True, type=btn_type):
+                st.session_state.selected_end_time = t_slot
+                st.rerun()
+                
+        if i + 1 < len(time_slots):
+            t_slot = time_slots[i+1]
+            btn_type = "primary" if t_slot == st.session_state.selected_end_time else "secondary"
+            if row_cols[1].button(t_slot, key=f"t_{t_slot}", use_container_width=True, type=btn_type):
+                st.session_state.selected_end_time = t_slot
+                st.rerun()
+            
     st.write("") 
     
     # 등록/취소 버튼
     btn_cols = st.columns(2)
     
     with btn_cols[0]:
-        if st.button(f"🚀 {selected_name} 등록/수정", type="primary", use_container_width=True):
+        if st.button(f"🚀 {st.session_state.selected_name} 등록/수정", type="primary", use_container_width=True):
             conn = sqlite3.connect("overtime.db")
             cursor = conn.cursor()
             
-            cursor.execute("SELECT id FROM overtime WHERE name=? AND date=?", (selected_name, today_str))
+            cursor.execute("SELECT id FROM overtime WHERE name=? AND date=?", (st.session_state.selected_name, today_str))
             record = cursor.fetchone()
             
             if record:
-                cursor.execute("UPDATE overtime SET end_time=? WHERE id=?", (selected_end_time, record[0]))
+                cursor.execute("UPDATE overtime SET end_time=? WHERE id=?", (st.session_state.selected_end_time, record[0]))
                 st.success(f"🔄 변경 완료!")
             else:
                 cursor.execute("INSERT INTO overtime (name, date, end_time) VALUES (?, ?, ?)", 
-                               (selected_name, today_str, selected_end_time))
+                               (st.session_state.selected_name, today_str, st.session_state.selected_end_time))
                 st.success(f"🎉 등록 완료!")
             
             conn.commit()
@@ -144,11 +155,11 @@ with col1:
             st.rerun()
             
     with btn_cols[1]:
-        if st.button(f"🗑️ {selected_name} 취소", type="secondary", use_container_width=True):
+        if st.button(f"🗑️ {st.session_state.selected_name} 취소", type="secondary", use_container_width=True):
             conn = sqlite3.connect("overtime.db")
             cursor = conn.cursor()
             
-            cursor.execute("DELETE FROM overtime WHERE name=? AND date=?", (selected_name, today_str))
+            cursor.execute("DELETE FROM overtime WHERE name=? AND date=?", (st.session_state.selected_name, today_str))
             
             if cursor.rowcount > 0:
                 st.warning(f"🗑️ 취소 완료!")
