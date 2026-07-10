@@ -38,20 +38,29 @@ if "selected_name" not in st.session_state:
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
 
-# --- 4. CSS 스타일 주입 ---
+# --- 4. CSS 스타일 주입 (가로 스크롤 방지 및 비율 최적화) ---
 st.markdown("""
     <style>
-        /* ⭐️ 모바일에서 '내부' 컬럼들(버튼 묶음)이 세로 1줄로 깨지는 것을 완벽 차단 */
+        /* ⭐️ 전체 앱 가로 스크롤 원천 차단 */
+        .stApp, .block-container {
+            overflow-x: hidden !important;
+            max-width: 100vw !important;
+        }
+
+        /* ⭐️ 모바일(768px 이하) 2열 버튼 폭 최적화 */
         @media (max-width: 768px) {
             div[data-testid="stHorizontalBlock"] div[data-testid="stHorizontalBlock"] {
                 display: flex !important;
                 flex-direction: row !important;
                 flex-wrap: nowrap !important;
+                gap: 8px !important; /* 버튼 사이 간격 8px 고정 */
+                width: 100% !important;
             }
             div[data-testid="stHorizontalBlock"] div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-                width: 50% !important;
-                flex: 1 1 50% !important;
-                min-width: 50% !important;
+                /* 50%에서 간격(8px)의 절반을 빼주어 100%를 넘지 않게 계산 */
+                width: calc(50% - 4px) !important;
+                flex: 1 1 calc(50% - 4px) !important;
+                min-width: 0 !important; /* 50% 강제 고정을 풀어 화면 밖으로 밀리는 현상 방지 */
             }
         }
 
@@ -73,8 +82,12 @@ st.markdown("""
         .overtime-checked { background-color: #fff5f5; color: #ff4b4b; font-weight: bold; }
         
         @media (max-width: 768px) {
-            .custom-overtime-table { font-size: 11px !important; }
-            .custom-overtime-table th, .custom-overtime-table td { padding: 4px 0px !important; height: 35px; }
+            .custom-overtime-table { font-size: 10px !important; } /* 글자 크기를 살짝 더 줄여서 표 삐져나감 방지 */
+            .custom-overtime-table th, .custom-overtime-table td { 
+                padding: 4px 1px !important; 
+                height: 35px; 
+                word-break: keep-all; /* 단어가 잘리지 않고 좁은 칸에 맞게 줄바꿈되도록 허용 */
+            }
             .overtime-checked { font-size: 10px !important; letter-spacing: -1px; }
         }
     </style>
@@ -87,12 +100,10 @@ col1, col2 = st.columns([1, 1.5])
 with col1:
     st.header(f"📝 야근 계획 등록 ({today_str})")
     
-    # ⭐️ 1. 이름 버튼 렌더링 (빈 공간 유지로 홀수 늘어남 방지)
     st.markdown("**1. 이름을 선택하세요**")
     for i in range(0, len(members), 2):
         row_cols = st.columns(2)
         
-        # 첫 번째 열 버튼
         if i < len(members):
             name = members[i]
             btn_type = "primary" if name == st.session_state.selected_name else "secondary"
@@ -100,7 +111,6 @@ with col1:
                 st.session_state.selected_name = name
                 st.rerun()
                 
-        # 두 번째 열 버튼 (마지막 홀수일 땐 이 부분이 빈칸으로 남아 크기를 지켜줌)
         if i + 1 < len(members):
             name = members[i+1]
             btn_type = "primary" if name == st.session_state.selected_name else "secondary"
@@ -110,7 +120,6 @@ with col1:
             
     st.write("") 
     
-    # ⭐️ 2. 시간 버튼 렌더링 (위와 동일한 로직)
     st.markdown("**2. 종료 시간을 선택하세요**")
     for i in range(0, len(time_slots), 2):
         row_cols = st.columns(2)
