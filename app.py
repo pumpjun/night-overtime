@@ -97,7 +97,7 @@ col1, col2 = st.columns([1, 1.5])
 with col1:
     st.header(f"📝 야근 계획 등록 ({today_str})")
     
-    # ⭐️ 이름 버튼: 2칸짜리 묶음(st.columns(2))을 반복 생성하여 모바일에서도 강제로 2열 정렬
+    # ⭐️ 이름 버튼: 2칸짜리 묶음을 반복 생성하여 모바일에서도 강제로 2열 정렬
     st.markdown("**1. 이름을 선택하세요**")
     for i in range(0, len(members), 2):
         row_cols = st.columns(2)
@@ -111,9 +111,9 @@ with col1:
             
     st.write("") 
     
-    # ⭐️ 시간 버튼: 마찬가지로 2칸짜리 묶음을 반복 생성하여 강제 2열 정렬
+    # ⭐️ 시간 버튼: (오타 수정 완료!) 2칸짜리 묶음을 반복 생성
     st.markdown("**2. 종료 시간을 선택하세요**")
-    for i window in range(0, len(time_slots), 2):
+    for i in range(0, len(time_slots), 2):
         row_cols = st.columns(2)
         for j in range(2):
             if i + j < len(time_slots):
