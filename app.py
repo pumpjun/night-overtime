@@ -30,6 +30,8 @@ def init_connection():
     ]
     creds = Credentials.from_service_account_info(key_dict, scopes=scopes)
     client = gspread.authorize(creds)
+    sheet_url = "https://docs.google.com/spreadsheets/d/1v4REfMtoTB9CQzBRks45UpaVmptHxYD-mYeAOnavDvY/edit?gid=0#gid=0"
+
     # 공유받은 구글 시트의 첫 번째 워크시트를 불러옴
     return client.open("overtime_db").sheet1
 
