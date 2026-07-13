@@ -33,7 +33,7 @@ def init_connection():
     sheet_url = "https://docs.google.com/spreadsheets/d/1v4REfMtoTB9CQzBRks45UpaVmptHxYD-mYeAOnavDvY/edit?gid=0#gid=0"
 
     # 공유받은 구글 시트의 첫 번째 워크시트를 불러옴
-    return client.open("sheet_url").sheet1
+    return client.open_by_url(sheet_url).sheet1
 
 # 시트 연결
 sheet = init_connection()
