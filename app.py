@@ -10,7 +10,7 @@ from google.oauth2.service_account import Credentials
 
 # 모바일/PC 넓게 쓰기 설정
 st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
-st.title("🌙 야근 계획 관리 시스템")
+st.title("🌙 T/S 야근 계획 관리 시스템")
 
 # --- 1. 고정 데이터 정의 ---
 members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이"]
