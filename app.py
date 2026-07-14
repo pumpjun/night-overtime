@@ -8,6 +8,14 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 
+hide_streamlit_style = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+</style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 # 모바일/PC 넓게 쓰기 설정
 st.set_page_config(
     page_title="T/S 야근 관리",       # 👈 브라우저 탭에 표시될 이름
