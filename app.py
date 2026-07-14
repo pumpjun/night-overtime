@@ -8,25 +8,28 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 
-hide_cloud_badge_style = """
+hide_profile_and_logo_style = """
 <style>
-/* 1. 상단 헤더와 기본 메뉴 전체 숨기기 (모바일 툴바 포함) */
-[data-testid="stHeader"] {
+/* 1. 우측 상단 툴바 전체(프로필 아이콘, 스트림릿 로고 포함) 숨기기 */
+[data-testid="stToolbar"] {
     display: none !important;
 }
 
-/* 2. 하단 워터마크(footer) 숨기기 */
-footer {
-    visibility: hidden !important;
+/* 2. 'Deploy' 또는 앱 상태를 나타내는 버튼/위젯 숨기기 */
+[data-testid="stAppDeployButton"], 
+[data-testid="stStatusWidget"] {
+    display: none !important;
 }
 
-/* 3. 우측 하단이나 모바일에 뜨는 클라우드 뷰어 뱃지(내 아이디) 강제 숨기기 */
-#st_viewerBadge, .viewerBadge_container__1QSob, .st-emotion-cache-1wmy9hl {
+/* 3. 헤더 영역의 색상 띠(Decoration) 숨기기 (선택 사항) */
+[data-testid="stDecoration"] {
     display: none !important;
 }
 </style>
 """
-st.markdown(hide_cloud_badge_style, unsafe_allow_html=True)
+st.markdown(hide_profile_and_logo_style, unsafe_allow_html=True)
+
+
 # 모바일/PC 넓게 쓰기 설정
 st.set_page_config(
     page_title="T/S 야근 관리",       # 👈 브라우저 탭에 표시될 이름
