@@ -138,7 +138,7 @@ with col1:
 
     # ⭐️ 수정: 근무 사유 필수 안내
     st.markdown("**3. 근무 사유를 입력하세요 (필수)**")
-    st.text_input("사유 입력란", key="reason_input", label_visibility="collapsed", placeholder="예: 시스템 점검, 장비 세팅 등 (미입력 시 등록 불가)")
+    st.text_input("사유 입력란", key="reason_input", label_visibility="collapsed", placeholder="예: B/T 3건 및 견뢰도 Test (미입력 시 등록 불가)")
     
     st.write("") 
 
