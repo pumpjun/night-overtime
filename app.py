@@ -29,16 +29,14 @@ hide_profile_and_logo_style = """
 """
 st.markdown(hide_profile_and_logo_style, unsafe_allow_html=True)
 
-
 # 모바일/PC 넓게 쓰기 설정
 st.set_page_config(
-    page_title="T/S 야근 관리",       # 👈 브라우저 탭에 표시될 이름
-    page_icon="🏢",                 # 👈 브라우저 탭에 표시될 아이콘 (이모지 또는 이미지 파일 경로)
+    page_title="T/S 야근 관리",       
+    page_icon="🏢",                 
     layout="wide", 
     initial_sidebar_state="collapsed"
 )
 
-# 화면 안에 크게 보이는 제목 (이것도 원하시면 바꾸셔도 됩니다)
 st.title("🏢 T/S 야근 계획 관리 시스템")
 
 # --- 1. 고정 데이터 정의 ---
@@ -51,7 +49,6 @@ today_str = today_date.strftime('%Y-%m-%d')
 # --- 2. 구글 스프레드시트 연동 (DB 대체) ---
 @st.cache_resource
 def init_connection():
-    # 스트림릿 Secrets에 저장해둔 JSON 문자열을 불러옴
     key_dict = json.loads(st.secrets["gcp_service_account"])
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -61,10 +58,8 @@ def init_connection():
     client = gspread.authorize(creds)
     sheet_url = "https://docs.google.com/spreadsheets/d/1v4REfMtoTB9CQzBRks45UpaVmptHxYD-mYeAOnavDvY/edit?gid=0#gid=0"
 
-    # 공유받은 구글 시트의 첫 번째 워크시트를 불러옴
     return client.open_by_url(sheet_url).sheet1
 
-# 시트 연결
 sheet = init_connection()
 
 # --- 3. 상태 관리 ---
@@ -72,6 +67,9 @@ if "selected_name" not in st.session_state:
     st.session_state.selected_name = members[0]
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
+# ⭐️ 추가: 근무 사유 상태 관리
+if "reason_input" not in st.session_state:
+    st.session_state.reason_input = ""
 
 # --- 4. CSS 스타일 주입 (디자인 유지) ---
 st.markdown("""
@@ -94,7 +92,7 @@ st.markdown("""
             .overtime-checked { font-size: 2.8vw !important; letter-spacing: -1px !important; }
         }
 
-        /* ⭐️ 버튼 강제 2열 배치 */
+        /* 버튼 강제 2열 배치 */
         div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) {
             display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 8px !important;
         }
@@ -138,7 +136,13 @@ with col1:
                 st.rerun()
                 
     st.write("") 
+
+    # ⭐️ 추가: 근무 사유 입력란
+    st.markdown("**3. 근무 사유를 입력하세요 (선택)**")
+    st.text_input("사유 입력란", key="reason_input", label_visibility="collapsed", placeholder="예: 시스템 점검, 장비 세팅 등")
     
+    st.write("") 
+
     # 등록/취소 버튼 묶음 (구글 시트 연동)
     with st.container():
         st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
@@ -154,12 +158,18 @@ with col1:
                     break
                     
             if row_to_update != -1:
-                sheet.update_cell(row_to_update, 4, st.session_state.selected_end_time) # 4번째 열(end_time) 수정
+                # ⭐️ 수정: 4번째 열(시간)과 5번째 열(사유) 함께 업데이트
+                sheet.update_cell(row_to_update, 4, st.session_state.selected_end_time) 
+                sheet.update_cell(row_to_update, 5, st.session_state.reason_input)
                 st.success(f"🔄 변경 완료!")
             else:
                 new_id = len(all_data)
-                sheet.append_row([new_id, st.session_state.selected_name, today_str, st.session_state.selected_end_time])
+                # ⭐️ 수정: 구글 시트 새로운 행 추가 시 사유(reason_input) 데이터 포함
+                sheet.append_row([new_id, st.session_state.selected_name, today_str, st.session_state.selected_end_time, st.session_state.reason_input])
                 st.success(f"🎉 등록 완료!")
+            
+            # 등록 후 사유 입력창 초기화를 원할 경우 아래 줄 주석 해제
+            # st.session_state.reason_input = "" 
             st.rerun()
             
         if st.button(f"🗑️ {st.session_state.selected_name} 취소", type="secondary", use_container_width=True):
@@ -193,9 +203,11 @@ with col2:
     records = []
     for row in all_data[1:]: # 첫 번째 헤더 줄 제외
         if len(row) >= 4 and row[2] == view_str:
-            records.append((row[1], row[3])) # 이름, 종료시간
+            # ⭐️ 추가: 과거 데이터에는 5번째 열(사유)이 없을 수 있으므로 예외 처리 추가
+            reason = row[4] if len(row) >= 5 and row[4].strip() != "" else "업무 연장"
+            records.append((row[1], row[3], reason)) # 이름, 종료시간, 사유
     
-    for name, end_t in records:
+    for name, end_t, reason in records:
         if end_t in grid_df.index and name in grid_df.columns:
             grid_df.loc[end_t, name] = "✔️ 야근"
                 
@@ -211,7 +223,7 @@ with col2:
     st.markdown(html_code, unsafe_allow_html=True)
     st.write("") 
     
-    # ⭐️ 원본 엑셀 템플릿 파일 로드 및 데이터 입력 로직
+    # 원본 엑셀 템플릿 파일 로드 및 데이터 입력 로직
     template_path = "template.xlsx"
     
     if os.path.exists(template_path):
@@ -221,11 +233,12 @@ with col2:
         ws['F3'] = view_str
         
         start_row = 8
-        for idx, (name, end_t) in enumerate(records, start=1):
+        for idx, (name, end_t, reason) in enumerate(records, start=1):
             ws.cell(row=start_row, column=2, value=idx)                             
             ws.cell(row=start_row, column=3, value=name)                            
             ws.cell(row=start_row, column=5, value=f"17:30 ~ {end_t}")              
-            ws.cell(row=start_row, column=6, value="업무 연장")                     
+            # ⭐️ 수정: 고정된 "업무 연장" 대신 입력받은 사유(reason)를 기입
+            ws.cell(row=start_row, column=6, value=reason)                      
             start_row += 1
             
         excel_buffer = io.BytesIO()
