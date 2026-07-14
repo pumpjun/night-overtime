@@ -246,3 +246,7 @@ with col2:
         st.download_button(
             label=f"📥 {view_str} 양식 엑셀 다운로드",
             data=excel_buffer.getvalue(),
+            file_name=f"야근계획서_{view_str}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
