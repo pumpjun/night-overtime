@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import datetime
+from datetime import datetime, timedelta, timezone
 import io
 import openpyxl
 import os
@@ -38,12 +38,16 @@ st.set_page_config(
 )
 
 st.title("🏢 T/S 야근 계획 관리 시스템")
+# ⭐️ 추가: 제작자 서명
+st.caption("✨ Created by tskwon")
 
 # --- 1. 고정 데이터 정의 ---
 members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이"]
 time_slots = ["19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"]
 
-today_date = datetime.date.today()
+# ⭐️ 수정: KST(UTC+9) 타임존을 적용하여 정확한 한국 시간 계산
+KST = timezone(timedelta(hours=9))
+today_date = datetime.now(KST).date()
 today_str = today_date.strftime('%Y-%m-%d')
 
 # --- 2. 구글 스프레드시트 연동 (DB 대체) ---
@@ -191,6 +195,7 @@ with col1:
 
 # --- 오른쪽 영역: 야근 현황판 및 맞춤형 엑셀 다운로드 ---
 with col2:
+    # 조회할 때도 기본값을 KST 기준으로 적용
     view_date = st.date_input("🗓️ 과거 기록 조회", today_date)
     view_str = view_date.strftime('%Y-%m-%d')
     
@@ -235,7 +240,7 @@ with col2:
         for idx, (name, end_t, reason) in enumerate(records, start=1):
             ws.cell(row=start_row, column=2, value=idx)                             
             ws.cell(row=start_row, column=3, value=name)                            
-            ws.cell(row=start_row, column=5, value=f"17:30 ~ {end_t}")              
+            ws.cell(row=start_row, column=5, value=f"17:30 ~ {end_t}")             
             ws.cell(row=start_row, column=6, value=reason)                      
             start_row += 1
             
