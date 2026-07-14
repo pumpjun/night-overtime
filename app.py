@@ -9,8 +9,15 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # 모바일/PC 넓게 쓰기 설정
-st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
-st.title("🌙 T/S 야근 계획 관리 시스템")
+st.set_page_config(
+    page_title="T/S 야근 관리",       # 👈 브라우저 탭에 표시될 이름
+    page_icon="🏢",                 # 👈 브라우저 탭에 표시될 아이콘 (이모지 또는 이미지 파일 경로)
+    layout="wide", 
+    initial_sidebar_state="collapsed"
+)
+
+# 화면 안에 크게 보이는 제목 (이것도 원하시면 바꾸셔도 됩니다)
+st.title("🏢 T/S 야근 계획 관리 시스템")
 
 # --- 1. 고정 데이터 정의 ---
 members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이"]
