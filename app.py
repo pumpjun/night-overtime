@@ -67,7 +67,6 @@ if "selected_name" not in st.session_state:
     st.session_state.selected_name = members[0]
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
-# ⭐️ 추가: 근무 사유 상태 관리
 if "reason_input" not in st.session_state:
     st.session_state.reason_input = ""
 
@@ -137,9 +136,9 @@ with col1:
                 
     st.write("") 
 
-    # ⭐️ 추가: 근무 사유 입력란
-    st.markdown("**3. 근무 사유를 입력하세요 (선택)**")
-    st.text_input("사유 입력란", key="reason_input", label_visibility="collapsed", placeholder="예: 시스템 점검, 장비 세팅 등")
+    # ⭐️ 수정: 근무 사유 필수 안내
+    st.markdown("**3. 근무 사유를 입력하세요 (필수)**")
+    st.text_input("사유 입력란", key="reason_input", label_visibility="collapsed", placeholder="예: 시스템 점검, 장비 세팅 등 (미입력 시 등록 불가)")
     
     st.write("") 
 
@@ -148,29 +147,30 @@ with col1:
         st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
         
         if st.button(f"🚀 {st.session_state.selected_name} 등록/수정", type="primary", use_container_width=True):
-            all_data = sheet.get_all_values()
-            row_to_update = -1
             
-            # 기존에 등록한 내역이 있는지 확인
-            for i, row in enumerate(all_data):
-                if i > 0 and len(row) >= 4 and row[1] == st.session_state.selected_name and row[2] == today_str:
-                    row_to_update = i + 1 # gspread는 1번 인덱스부터 시작
-                    break
-                    
-            if row_to_update != -1:
-                # ⭐️ 수정: 4번째 열(시간)과 5번째 열(사유) 함께 업데이트
-                sheet.update_cell(row_to_update, 4, st.session_state.selected_end_time) 
-                sheet.update_cell(row_to_update, 5, st.session_state.reason_input)
-                st.success(f"🔄 변경 완료!")
+            # ⭐️ 추가: 사유 입력란이 비어있는지 확인 (공백만 있는 경우도 차단)
+            if not st.session_state.reason_input.strip():
+                st.error("⚠️ 근무 사유를 반드시 적어주세요!")
             else:
-                new_id = len(all_data)
-                # ⭐️ 수정: 구글 시트 새로운 행 추가 시 사유(reason_input) 데이터 포함
-                sheet.append_row([new_id, st.session_state.selected_name, today_str, st.session_state.selected_end_time, st.session_state.reason_input])
-                st.success(f"🎉 등록 완료!")
-            
-            # 등록 후 사유 입력창 초기화를 원할 경우 아래 줄 주석 해제
-            # st.session_state.reason_input = "" 
-            st.rerun()
+                all_data = sheet.get_all_values()
+                row_to_update = -1
+                
+                # 기존에 등록한 내역이 있는지 확인
+                for i, row in enumerate(all_data):
+                    if i > 0 and len(row) >= 4 and row[1] == st.session_state.selected_name and row[2] == today_str:
+                        row_to_update = i + 1 # gspread는 1번 인덱스부터 시작
+                        break
+                        
+                if row_to_update != -1:
+                    sheet.update_cell(row_to_update, 4, st.session_state.selected_end_time) 
+                    sheet.update_cell(row_to_update, 5, st.session_state.reason_input)
+                    st.success(f"🔄 변경 완료!")
+                else:
+                    new_id = len(all_data)
+                    sheet.append_row([new_id, st.session_state.selected_name, today_str, st.session_state.selected_end_time, st.session_state.reason_input])
+                    st.success(f"🎉 등록 완료!")
+                
+                st.rerun()
             
         if st.button(f"🗑️ {st.session_state.selected_name} 취소", type="secondary", use_container_width=True):
             all_data = sheet.get_all_values()
@@ -203,7 +203,6 @@ with col2:
     records = []
     for row in all_data[1:]: # 첫 번째 헤더 줄 제외
         if len(row) >= 4 and row[2] == view_str:
-            # ⭐️ 추가: 과거 데이터에는 5번째 열(사유)이 없을 수 있으므로 예외 처리 추가
             reason = row[4] if len(row) >= 5 and row[4].strip() != "" else "업무 연장"
             records.append((row[1], row[3], reason)) # 이름, 종료시간, 사유
     
@@ -237,7 +236,6 @@ with col2:
             ws.cell(row=start_row, column=2, value=idx)                             
             ws.cell(row=start_row, column=3, value=name)                            
             ws.cell(row=start_row, column=5, value=f"17:30 ~ {end_t}")              
-            # ⭐️ 수정: 고정된 "업무 연장" 대신 입력받은 사유(reason)를 기입
             ws.cell(row=start_row, column=6, value=reason)                      
             start_row += 1
             
@@ -248,9 +246,3 @@ with col2:
         st.download_button(
             label=f"📥 {view_str} 양식 엑셀 다운로드",
             data=excel_buffer.getvalue(),
-            file_name=f"야근계획서_{view_str}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-    else:
-        st.error("⚠️ 폴더 내에 'template.xlsx' 원본 양식 파일이 존재하지 않습니다. 깃허브에 양식 파일을 먼저 업로드해 주세요!")
