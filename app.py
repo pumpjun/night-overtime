@@ -139,7 +139,7 @@ with top_col2:
         st.rerun()
 st.write("---") 
 
-# --- 2. 고정 데이터 및 ⭐️ 날짜(토요일) 정의 ---
+# --- 2. 고정 데이터 및 날짜 정의 ---
 night_time_slots = ["19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"]
 holiday_time_slots = ["12:00", "17:00"] 
 
@@ -147,7 +147,6 @@ KST = timezone(timedelta(hours=9))
 today_date = datetime.now(KST).date()
 today_str = today_date.strftime('%Y-%m-%d')
 
-# ⭐️ 이번 주 토요일 날짜 계산 (월=0, 토=5)
 this_saturday_date = today_date + timedelta(days=(5 - today_date.weekday()))
 this_saturday_str = this_saturday_date.strftime('%Y-%m-%d')
 
@@ -182,68 +181,77 @@ with col1:
     st.header(f"📝 근무 계획 등록")
     st.markdown(f"**1. 등록 대상자:** `{st.session_state.current_user}`")
     
-    tab_night, tab_holiday = st.tabs(["🌙 야간근무", "☀️ 휴일근무"])
+    # ⭐️ 관리자인 경우 탭 없이 휴일근무만 표시, 일반인원은 탭 2개 분리
+    if st.session_state.current_user in admins:
+        st.info("💡 관리자 권한: '휴일근무'만 등록할 수 있습니다.")
+        tabs = st.tabs(["☀️ 휴일근무"])
+        tab_holiday = tabs[0]
+        has_night_tab = False
+    else:
+        tabs = st.tabs(["🌙 야간근무", "☀️ 휴일근무"])
+        tab_night, tab_holiday = tabs[0], tabs[1]
+        has_night_tab = True
     
-    # [야간근무 탭 로직]
-    with tab_night:
-        st.info(f"💡 오늘(**{today_str}**) 기준으로 야근이 등록됩니다.")
-        st.markdown("**2. 종료 시간을 선택하세요**")
-        with st.container():
-            st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
-            for t_slot in night_time_slots:
-                btn_type = "primary" if t_slot == st.session_state.night_end_time else "secondary"
-                if st.button(t_slot, key=f"n_{t_slot}", use_container_width=True, type=btn_type):
-                    st.session_state.night_end_time = t_slot
-                    st.rerun()
-                    
-        st.write("") 
-        st.markdown("**3. 근무 사유를 입력하세요 (필수)**")
-        st.text_input("사유 입력", key="night_reason", label_visibility="collapsed", placeholder="예: B/T 3건 및 견뢰도 Test")
-        st.write("") 
+    # [야간근무 탭 로직] - 일반 인원일 때만 생성
+    if has_night_tab:
+        with tab_night:
+            st.info(f"💡 오늘(**{today_str}**) 기준으로 야근이 등록됩니다.")
+            st.markdown("**2. 종료 시간을 선택하세요**")
+            with st.container():
+                st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
+                for t_slot in night_time_slots:
+                    btn_type = "primary" if t_slot == st.session_state.night_end_time else "secondary"
+                    if st.button(t_slot, key=f"n_{t_slot}", use_container_width=True, type=btn_type):
+                        st.session_state.night_end_time = t_slot
+                        st.rerun()
+                        
+            st.write("") 
+            st.markdown("**3. 근무 사유를 입력하세요 (필수)**")
+            st.text_input("사유 입력", key="night_reason", label_visibility="collapsed", placeholder="예: B/T 3건 및 견뢰도 Test")
+            st.write("") 
 
-        with st.container():
-            st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
-            
-            if st.button(f"🚀 야간 등록/수정", key="n_reg", type="primary", use_container_width=True):
-                if not st.session_state.night_reason.strip():
-                    st.error("⚠️ 근무 사유를 반드시 적어주세요!")
-                else:
+            with st.container():
+                st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
+                
+                if st.button(f"🚀 야간 등록/수정", key="n_reg", type="primary", use_container_width=True):
+                    if not st.session_state.night_reason.strip():
+                        st.error("⚠️ 근무 사유를 반드시 적어주세요!")
+                    else:
+                        all_data = sheet.get_all_values()
+                        row_to_update = -1
+                        for i, row in enumerate(all_data):
+                            row_wt = row[5] if len(row) >= 6 else "야간"
+                            if i > 0 and len(row) >= 4 and row[1] == st.session_state.current_user and row[2] == today_str and row_wt == "야간":
+                                row_to_update = i + 1 
+                                break
+                        if row_to_update != -1:
+                            sheet.update_cell(row_to_update, 4, st.session_state.night_end_time) 
+                            sheet.update_cell(row_to_update, 5, st.session_state.night_reason)
+                            if len(all_data[row_to_update-1]) < 6: sheet.update_cell(row_to_update, 6, "야간")
+                            st.success(f"🔄 야간근무 변경 완료!")
+                        else:
+                            new_id = len(all_data)
+                            sheet.append_row([new_id, st.session_state.current_user, today_str, st.session_state.night_end_time, st.session_state.night_reason, "야간"])
+                            st.success(f"🎉 야간근무 등록 완료!")
+                        st.rerun()
+                    
+                if st.button(f"🗑️ 야간 취소", key="n_del", type="secondary", use_container_width=True):
                     all_data = sheet.get_all_values()
-                    row_to_update = -1
+                    row_to_delete = -1
                     for i, row in enumerate(all_data):
                         row_wt = row[5] if len(row) >= 6 else "야간"
                         if i > 0 and len(row) >= 4 and row[1] == st.session_state.current_user and row[2] == today_str and row_wt == "야간":
-                            row_to_update = i + 1 
+                            row_to_delete = i + 1
                             break
-                    if row_to_update != -1:
-                        sheet.update_cell(row_to_update, 4, st.session_state.night_end_time) 
-                        sheet.update_cell(row_to_update, 5, st.session_state.night_reason)
-                        if len(all_data[row_to_update-1]) < 6: sheet.update_cell(row_to_update, 6, "야간")
-                        st.success(f"🔄 야간근무 변경 완료!")
+                    if row_to_delete != -1:
+                        sheet.delete_rows(row_to_delete)
+                        st.warning(f"🗑️ 야간근무 취소 완료!")
                     else:
-                        new_id = len(all_data)
-                        sheet.append_row([new_id, st.session_state.current_user, today_str, st.session_state.night_end_time, st.session_state.night_reason, "야간"])
-                        st.success(f"🎉 야간근무 등록 완료!")
+                        st.info(f"ℹ️ 기록 없음")
                     st.rerun()
-                
-            if st.button(f"🗑️ 야간 취소", key="n_del", type="secondary", use_container_width=True):
-                all_data = sheet.get_all_values()
-                row_to_delete = -1
-                for i, row in enumerate(all_data):
-                    row_wt = row[5] if len(row) >= 6 else "야간"
-                    if i > 0 and len(row) >= 4 and row[1] == st.session_state.current_user and row[2] == today_str and row_wt == "야간":
-                        row_to_delete = i + 1
-                        break
-                if row_to_delete != -1:
-                    sheet.delete_rows(row_to_delete)
-                    st.warning(f"🗑️ 야간근무 취소 완료!")
-                else:
-                    st.info(f"ℹ️ 기록 없음")
-                st.rerun()
 
-    # [휴일근무 탭 로직]
+    # [휴일근무 탭 로직] - 모두에게 표시
     with tab_holiday:
-        # ⭐️ 토요일로 자동 지정됨을 안내
         st.info(f"💡 이번 주 토요일(**{this_saturday_str}**) 기준으로 휴일근무가 등록됩니다.")
         st.markdown("**2. 종료 시간을 선택하세요**")
         with st.container():
@@ -270,7 +278,6 @@ with col1:
                     row_to_update = -1
                     for i, row in enumerate(all_data):
                         row_wt = row[5] if len(row) >= 6 else "야간"
-                        # ⭐️ today_str 대신 this_saturday_str 에 저장
                         if i > 0 and len(row) >= 4 and row[1] == st.session_state.current_user and row[2] == this_saturday_str and row_wt == "휴일":
                             row_to_update = i + 1 
                             break
@@ -280,7 +287,6 @@ with col1:
                         st.success(f"🔄 휴일근무 변경 완료!")
                     else:
                         new_id = len(all_data)
-                        # ⭐️ today_str 대신 this_saturday_str 로 저장
                         sheet.append_row([new_id, st.session_state.current_user, this_saturday_str, st.session_state.holiday_end_time, st.session_state.holiday_reason, "휴일"])
                         st.success(f"🎉 휴일근무 등록 완료!")
                     st.rerun()
@@ -290,7 +296,6 @@ with col1:
                 row_to_delete = -1
                 for i, row in enumerate(all_data):
                     row_wt = row[5] if len(row) >= 6 else "야간"
-                    # ⭐️ 삭제할 때도 this_saturday_str 기준으로 찾음
                     if i > 0 and len(row) >= 4 and row[1] == st.session_state.current_user and row[2] == this_saturday_str and row_wt == "휴일":
                         row_to_delete = i + 1
                         break
@@ -306,19 +311,16 @@ with col2:
     view_date = st.date_input("🗓️ 조회 기준 날짜 선택 (평일을 골라도 해당 주 토요일 휴일근무 확인 가능)", today_date)
     view_str = view_date.strftime('%Y-%m-%d')
     
-    # ⭐️ 조회된 날짜 기준의 토요일 날짜 계산 (휴일 탭 출력용)
     view_saturday_date = view_date + timedelta(days=(5 - view_date.weekday()))
     view_saturday_str = view_saturday_date.strftime('%Y-%m-%d')
     
     all_data = sheet.get_all_values()
     
+    # ⭐️ 이제 모든 사람에게 3개의 탭(야간, 휴일, 8주달력)이 모두 표출됩니다.
     if st.session_state.current_user in admins:
-        tabs = st.tabs(["🌙 야간근무 현황", "☀️ 휴일근무 현황 (토요일)"])
-        tab1, tab2 = tabs[0], tabs[1]
-        has_tab3 = False
+        tab1, tab2, tab3 = st.tabs(["🌙 야간근무 현황", "☀️ 휴일근무 현황 (토요일)", "📅 8주 상세 달력 조회 (관리자)"])
     else:
         tab1, tab2, tab3 = st.tabs(["🌙 야간근무 현황", "☀️ 휴일근무 현황 (토요일)", "📅 나의 8주 달력 (야간+휴일)"])
-        has_tab3 = True
     
     # === 탭 1: 야간근무 현황 ===
     with tab1:
@@ -384,13 +386,11 @@ with col2:
 
     # === 탭 2: 휴일근무 현황 ===
     with tab2:
-        # ⭐️ view_str 이 아닌 view_saturday_str 을 화면에 표시
         st.header(f"☀️ {view_saturday_str} 휴일근무")
         grid_df_holiday = pd.DataFrame(index=holiday_time_slots, columns=HOLIDAY_USERS).fillna("")
         records_holiday = []
         
         for row in all_data[1:]:
-            # ⭐️ view_str 이 아닌 view_saturday_str 으로 필터링하여 토요일 데이터만 뽑아옴
             if len(row) >= 4 and row[2] == view_saturday_str:
                 row_wt = row[5] if len(row) >= 6 else "야간"
                 if row_wt == "휴일":
@@ -421,7 +421,6 @@ with col2:
             wb_h = openpyxl.load_workbook(template_path)
             ws_h = wb_h.active
             
-            # ⭐️ 엑셀에도 토요일 날짜 출력
             ws_h['F3'] = view_saturday_str
             if st.session_state.current_user in admins:
                 ws_h['H3'] = st.session_state.current_user
@@ -446,96 +445,101 @@ with col2:
                 use_container_width=True
             )
 
-    # === 탭 3: 요일별 8주 달력 (야간+휴일 합산, 일반 인원 전용) ===
-    if has_tab3:
-        with tab3:
-            current_week_start = view_date - timedelta(days=view_date.weekday())
-            weeks_info = []
-            for i in range(7, -1, -1):
-                w_start = current_week_start - timedelta(weeks=i)
-                w_end = w_start + timedelta(days=6)
-                label = f"{w_start.strftime('%m/%d')} ~ {w_end.strftime('%m/%d')}"
-                weeks_info.append({"start": w_start, "end": w_end, "label": label})
-                
-            def calculate_work_hours(end_time_str, work_type):
-                try:
-                    end = datetime.strptime(end_time_str, "%H:%M")
-                    if work_type == "야간":
-                        start = datetime.strptime("17:30", "%H:%M")
-                        hours = (end - start).total_seconds() / 3600.0
-                    else: # 휴일
-                        start = datetime.strptime("08:00", "%H:%M")
-                        hours = (end - start).total_seconds() / 3600.0
-                        if end > datetime.strptime("12:00", "%H:%M"):
-                            hours -= 1.0
-                            
-                    return max(hours, 0.0) 
-                except ValueError:
-                    return 0.0
+    # === 탭 3: 요일별 8주 달력 ===
+    with tab3:
+        current_week_start = view_date - timedelta(days=view_date.weekday())
+        weeks_info = []
+        for i in range(7, -1, -1):
+            w_start = current_week_start - timedelta(weeks=i)
+            w_end = w_start + timedelta(days=6)
+            label = f"{w_start.strftime('%m/%d')} ~ {w_end.strftime('%m/%d')}"
+            weeks_info.append({"start": w_start, "end": w_end, "label": label})
+            
+        def calculate_work_hours(end_time_str, work_type):
+            try:
+                end = datetime.strptime(end_time_str, "%H:%M")
+                if work_type == "야간":
+                    start = datetime.strptime("17:30", "%H:%M")
+                    hours = (end - start).total_seconds() / 3600.0
+                else:
+                    start = datetime.strptime("08:00", "%H:%M")
+                    hours = (end - start).total_seconds() / 3600.0
+                    if end > datetime.strptime("12:00", "%H:%M"):
+                        hours -= 1.0
+                        
+                return max(hours, 0.0) 
+            except ValueError:
+                return 0.0
 
+        # ⭐️ 관리자일 경우 드롭다운 활성화 (기본 선택값을 본인으로 세팅)
+        if st.session_state.current_user in admins:
+            st.subheader("📅 8주 상세 달력 조회")
+            default_index = HOLIDAY_USERS.index(st.session_state.current_user)
+            target_user = st.selectbox("📌 조회할 인원을 선택하세요", HOLIDAY_USERS, index=default_index)
+        else:
             st.subheader("📅 나의 8주 상세 달력")
             st.info(f"이 데이터는 오직 **{st.session_state.current_user}** 님에게만 표시됩니다.")
             target_user = st.session_state.current_user
 
-            calendar_data = { w["label"]: [0.0] * 7 for w in weeks_info }
+        calendar_data = { w["label"]: [0.0] * 7 for w in weeks_info }
 
-            for row in all_data[1:]: 
-                if len(row) >= 4:
-                    try:
-                        row_name = row[1]
-                        if row_name == target_user:
-                            row_date = datetime.strptime(row[2], "%Y-%m-%d").date()
-                            row_end_time = row[3]
-                            row_wt = row[5] if len(row) >= 6 else "야간"
-                            
-                            if weeks_info[0]["start"] <= row_date <= weeks_info[-1]["end"]:
-                                for w in weeks_info:
-                                    if w["start"] <= row_date <= w["end"]:
-                                        if row_wt == "휴일":
-                                            day_idx = 5
-                                        else:
-                                            day_idx = row_date.weekday()
-                                            
-                                        calendar_data[w["label"]][day_idx] += calculate_work_hours(row_end_time, row_wt)
-                                        break
-                    except ValueError:
-                        continue
+        for row in all_data[1:]: 
+            if len(row) >= 4:
+                try:
+                    row_name = row[1]
+                    if row_name == target_user:
+                        row_date = datetime.strptime(row[2], "%Y-%m-%d").date()
+                        row_end_time = row[3]
+                        row_wt = row[5] if len(row) >= 6 else "야간"
+                        
+                        if weeks_info[0]["start"] <= row_date <= weeks_info[-1]["end"]:
+                            for w in weeks_info:
+                                if w["start"] <= row_date <= w["end"]:
+                                    if row_wt == "휴일":
+                                        day_idx = 5
+                                    else:
+                                        day_idx = row_date.weekday()
+                                        
+                                    calendar_data[w["label"]][day_idx] += calculate_work_hours(row_end_time, row_wt)
+                                    break
+                except ValueError:
+                    continue
+        
+        weekly_html = '''
+        <table class="weekly-summary-table">
+            <colgroup>
+                <col style="width: 26%;">
+                <col style="width: 10%;">
+                <col style="width: 10%;">
+                <col style="width: 10%;">
+                <col style="width: 10%;">
+                <col style="width: 10%;">
+                <col style="width: 10%;">
+                <col style="width: 14%;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>주차 (기간)</th>
+                    <th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th>토</th>
+                    <th>합계</th>
+                </tr>
+            </thead>
+            <tbody>
+        '''
+        
+        for w in weeks_info:
+            label = w["label"]
+            days = calendar_data[label][:6] 
+            week_total = sum(days)
             
-            weekly_html = '''
-            <table class="weekly-summary-table">
-                <colgroup>
-                    <col style="width: 26%;">
-                    <col style="width: 10%;">
-                    <col style="width: 10%;">
-                    <col style="width: 10%;">
-                    <col style="width: 10%;">
-                    <col style="width: 10%;">
-                    <col style="width: 10%;">
-                    <col style="width: 14%;">
-                </colgroup>
-                <thead>
-                    <tr>
-                        <th>주차 (기간)</th>
-                        <th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th>토</th>
-                        <th>합계</th>
-                    </tr>
-                </thead>
-                <tbody>
-            '''
+            weekly_html += f'<tr><td class="weekly-label">{label}</td>'
             
-            for w in weeks_info:
-                label = w["label"]
-                days = calendar_data[label][:6] 
-                week_total = sum(days)
+            for d in days:
+                display_d = f"{d:.1f}h" if d > 0 else "-"
+                weekly_html += f'<td>{display_d}</td>'
                 
-                weekly_html += f'<tr><td class="weekly-label">{label}</td>'
-                
-                for d in days:
-                    display_d = f"{d:.1f}h" if d > 0 else "-"
-                    weekly_html += f'<td>{display_d}</td>'
-                    
-                display_total = f"{week_total:.1f}h" if week_total > 0 else "-"
-                weekly_html += f'<td class="weekly-hours">{display_total}</td></tr>'
-                
-            weekly_html += '</tbody></table>'
-            st.markdown(weekly_html, unsafe_allow_html=True)
+            display_total = f"{week_total:.1f}h" if week_total > 0 else "-"
+            weekly_html += f'<td class="weekly-hours">{display_total}</td></tr>'
+            
+        weekly_html += '</tbody></table>'
+        st.markdown(weekly_html, unsafe_allow_html=True)
