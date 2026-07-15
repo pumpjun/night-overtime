@@ -8,48 +8,155 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 
-hide_profile_and_logo_style = """
-<style>
-/* 1. 우측 상단 툴바 전체(프로필 아이콘, 스트림릿 로고 포함) 숨기기 */
-[data-testid="stToolbar"] {
-    display: none !important;
-}
+# --- 0. 사용자 및 관리자 정의, 비밀번호 세팅 ---
+members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이"]
+admins = ["장현준", "김동기", "최상철", "강택규", "김현준"]
 
-/* 2. 'Deploy' 또는 앱 상태를 나타내는 버튼/위젯 숨기기 */
-[data-testid="stAppDeployButton"], 
-[data-testid="stStatusWidget"] {
-    display: none !important;
-}
+ALL_USERS = members + admins
+USER_PINS = {user: "5050" for user in ALL_USERS}
 
-/* 3. 헤더 영역의 색상 띠(Decoration) 숨기기 (선택 사항) */
-[data-testid="stDecoration"] {
-    display: none !important;
-}
-</style>
-"""
-st.markdown(hide_profile_and_logo_style, unsafe_allow_html=True)
-
-# 모바일/PC 넓게 쓰기 설정
+# 모바일/PC 넓게 쓰기 설정 및 사이드바 기본 숨김
 st.set_page_config(
     page_title="T/S 야근 관리",       
     page_icon="🏢",                 
     layout="wide", 
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed" 
 )
 
-st.title("🏢 T/S 야근 계획 관리 시스템")
-st.caption("✨ Created by tskwon")
+# ⭐️ CSS 스타일 전역 주입
+custom_css = """
+<style>
+    /* 우측 상단 툴바 및 스트림릿 로고, 사이드바 토글 숨기기 */
+    [data-testid="stToolbar"], [data-testid="stAppDeployButton"], 
+    [data-testid="stStatusWidget"], [data-testid="stDecoration"], 
+    [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+    
+    .stApp, .block-container { overflow-x: hidden !important; max-width: 100vw !important; padding-top: 2rem !important; }
+    
+    @media (max-width: 768px) {
+        h1 { white-space: nowrap !important; font-size: 5.5vw !important; letter-spacing: -0.5px !important; }
+        h2 { white-space: nowrap !important; font-size: 4.5vw !important; letter-spacing: -0.5px !important; }
+    }
+    
+    .custom-overtime-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 15px; table-layout: fixed; }
+    .custom-overtime-table th, .custom-overtime-table td { border: 1px solid #dcdde1; padding: 10px 2px; text-align: center !important; vertical-align: middle !important; }
+    .custom-overtime-table th { background-color: #f0f2f6; color: #31333F; font-weight: bold; }
+    .overtime-checked { background-color: #fff5f5; color: #ff4b4b; font-weight: bold; }
+    
+    @media (max-width: 768px) {
+        .custom-overtime-table { font-size: 3vw !important; }
+        .custom-overtime-table th, .custom-overtime-table td { padding: 4px 0px !important; height: 35px; white-space: nowrap !important; letter-spacing: -0.5px !important; }
+        .overtime-checked { font-size: 2.8vw !important; letter-spacing: -1px !important; }
+    }
+    
+    /* 버튼 2열 그리드 배치 */
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) {
+        display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 8px !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:not(:has(style)) {
+        width: calc(50% - 4px) !important; flex: 0 0 calc(50% - 4px) !important; min-width: 0 !important; 
+    }
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:has(style) {
+        display: none !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) button {
+        white-space: nowrap !important; height: auto !important; min-height: 42px !important;
+    }
+    
+    /* 주간 현황(달력) 테이블 스타일 (table-layout: fixed 적용으로 너비 고정) */
+    .weekly-summary-table { width: 100%; text-align: center; font-size: 13.5px; margin-top: 10px; border-collapse: collapse; table-layout: fixed; }
+    .weekly-summary-table th, .weekly-summary-table td { border: 1px solid #dcdde1; padding: 8px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .weekly-summary-table th { background-color: #e8f0fe; color: #1a73e8; }
+    .weekly-hours { font-weight: bold; color: #2c3e50; background-color: #f1f3f5; }
+    .weekly-label { font-weight: bold; background-color: #f8f9fa; color: #31333F; }
+    
+    @media (max-width: 768px) {
+        .weekly-summary-table { font-size: 2.5vw !important; }
+        .weekly-summary-table th, .weekly-summary-table td { padding: 4px 2px !important; }
+    }
+</style>
+"""
+st.markdown(custom_css, unsafe_allow_html=True)
 
-# --- 1. 고정 데이터 정의 ---
-members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이"]
+# --- 1. 세션 상태 관리 (로그인 처리) ---
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "current_user" not in st.session_state:
+    st.session_state.current_user = None
+if "login_selected_user" not in st.session_state:
+    st.session_state.login_selected_user = ALL_USERS[0]
+
+# 🔒 로그인 화면
+if not st.session_state.logged_in:
+    st.title("🏢 T/S 야근 계획 관리 시스템")
+    st.caption("✨ Created by tskwon")
+    
+    _, col_login, _ = st.columns([1, 1.5, 1])
+    
+    with col_login:
+        st.write("")
+        st.markdown("### 🔐 시스템 로그인")
+        
+        st.markdown("##### 🧑‍💻 야근인원")
+        with st.container():
+            st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
+            for user in members:
+                btn_type = "primary" if user == st.session_state.login_selected_user else "secondary"
+                if st.button(user, key=f"login_btn_{user}", use_container_width=True, type=btn_type):
+                    st.session_state.login_selected_user = user
+                    st.rerun()
+                    
+        st.write("")
+        st.markdown("##### 👑 관리자")
+        with st.container():
+            st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
+            for user in admins:
+                btn_type = "primary" if user == st.session_state.login_selected_user else "secondary"
+                if st.button(user, key=f"login_btn_{user}", use_container_width=True, type=btn_type):
+                    st.session_state.login_selected_user = user
+                    st.rerun()
+        
+        st.write("")
+        st.markdown(f"**현재 선택됨:** `{st.session_state.login_selected_user}`")
+        pin_input = st.text_input("🔑 비밀번호", type="password", placeholder="비밀번호 4자리 입력")
+        
+        if st.button("🚀 로그인", type="primary", use_container_width=True):
+            if USER_PINS.get(st.session_state.login_selected_user) == pin_input:
+                st.session_state.logged_in = True
+                st.session_state.current_user = st.session_state.login_selected_user
+                st.rerun()
+            else:
+                st.error("⚠️ 비밀번호가 일치하지 않습니다.")
+    
+    st.stop() 
+
+# =====================================================================
+# 로그인 성공 시 메인 화면
+# =====================================================================
+
+top_col1, top_col2 = st.columns([4, 1])
+with top_col1:
+    st.title("🏢 T/S 야근 계획 관리 시스템")
+    st.caption("✨ Created by tskwon")
+with top_col2:
+    st.write("") 
+    if st.button("🚪 로그아웃", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.current_user = None
+        st.rerun()
+
+st.write("---") 
+
+# --- 2. 고정 데이터 정의 ---
 time_slots = ["19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"]
 
-# KST(UTC+9) 타임존을 적용하여 정확한 한국 시간 계산
 KST = timezone(timedelta(hours=9))
 today_date = datetime.now(KST).date()
 today_str = today_date.strftime('%Y-%m-%d')
 
-# --- 2. 구글 스프레드시트 연동 ---
+# --- 3. 구글 스프레드시트 연동 ---
 @st.cache_resource
 def init_connection():
     key_dict = json.loads(st.secrets["gcp_service_account"])
@@ -60,61 +167,15 @@ def init_connection():
     creds = Credentials.from_service_account_info(key_dict, scopes=scopes)
     client = gspread.authorize(creds)
     sheet_url = "https://docs.google.com/spreadsheets/d/1v4REfMtoTB9CQzBRks45UpaVmptHxYD-mYeAOnavDvY/edit?gid=0#gid=0"
-
     return client.open_by_url(sheet_url).sheet1
 
 sheet = init_connection()
 
-# --- 3. 상태 관리 ---
-if "selected_name" not in st.session_state:
-    st.session_state.selected_name = members[0]
+# --- 4. 기타 상태 관리 ---
 if "selected_end_time" not in st.session_state:
     st.session_state.selected_end_time = time_slots[0]
 if "reason_input" not in st.session_state:
     st.session_state.reason_input = ""
-
-# --- 4. CSS 스타일 주입 ---
-st.markdown("""
-    <style>
-        .stApp, .block-container { overflow-x: hidden !important; max-width: 100vw !important; }
-        
-        @media (max-width: 768px) {
-            h1 { white-space: nowrap !important; font-size: 5.5vw !important; letter-spacing: -0.5px !important; }
-            h2 { white-space: nowrap !important; font-size: 4.5vw !important; letter-spacing: -0.5px !important; }
-        }
-
-        .custom-overtime-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 15px; table-layout: fixed; }
-        .custom-overtime-table th, .custom-overtime-table td { border: 1px solid #dcdde1; padding: 10px 2px; text-align: center !important; vertical-align: middle !important; }
-        .custom-overtime-table th { background-color: #f0f2f6; color: #31333F; font-weight: bold; }
-        .overtime-checked { background-color: #fff5f5; color: #ff4b4b; font-weight: bold; }
-        
-        @media (max-width: 768px) {
-            .custom-overtime-table { font-size: 3vw !important; }
-            .custom-overtime-table th, .custom-overtime-table td { padding: 4px 0px !important; height: 35px; white-space: nowrap !important; letter-spacing: -0.5px !important; }
-            .overtime-checked { font-size: 2.8vw !important; letter-spacing: -1px !important; }
-        }
-
-        div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) {
-            display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 8px !important;
-        }
-        div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:not(:has(style)) {
-            width: calc(50% - 4px) !important; flex: 0 0 calc(50% - 4px) !important; min-width: 0 !important; 
-        }
-        div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:has(style) {
-            display: none !important;
-        }
-        div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) button {
-            white-space: nowrap !important; height: auto !important; min-height: 42px !important;
-        }
-        
-        /* 주간 현황 테이블 스타일 */
-        .weekly-summary-table { width: 100%; text-align: center; font-size: 14px; margin-top: 10px; border-collapse: collapse;}
-        .weekly-summary-table th, .weekly-summary-table td { border: 1px solid #dcdde1; padding: 8px; }
-        .weekly-summary-table th { background-color: #e8f0fe; color: #1a73e8; }
-        .weekly-hours { font-weight: bold; color: #2c3e50; }
-        .weekly-label { font-weight: bold; background-color: #f8f9fa; color: #31333F; }
-    </style>
-""", unsafe_allow_html=True)
 
 # --- 5. 화면 레이아웃 분할 ---
 col1, col2 = st.columns([1, 1.5])
@@ -123,15 +184,9 @@ col1, col2 = st.columns([1, 1.5])
 with col1:
     st.header(f"📝 야근 계획 등록 ({today_str})")
     
-    st.markdown("**1. 이름을 선택하세요**")
-    with st.container():
-        st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
-        for name in members:
-            btn_type = "primary" if name == st.session_state.selected_name else "secondary"
-            if st.button(name, key=f"m_{name}", use_container_width=True, type=btn_type):
-                st.session_state.selected_name = name
-                st.rerun()
-                
+    st.markdown(f"**1. 등록 대상자:** `{st.session_state.current_user}`")
+    if st.session_state.current_user in admins:
+        st.info("💡 관리자 계정입니다. 우측에서 팀 전체 일간 현황 및 엑셀 다운로드가 가능합니다.")
     st.write("") 
     
     st.markdown("**2. 종료 시간을 선택하세요**")
@@ -147,14 +202,12 @@ with col1:
 
     st.markdown("**3. 근무 사유를 입력하세요 (필수)**")
     st.text_input("사유 입력란", key="reason_input", label_visibility="collapsed", placeholder="예: B/T 3건 및 견뢰도 Test (미입력 시 등록 불가)")
-    
     st.write("") 
 
-    # 등록/취소 버튼 묶음 
     with st.container():
         st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
         
-        if st.button(f"🚀 {st.session_state.selected_name} 등록/수정", type="primary", use_container_width=True):
+        if st.button(f"🚀 등록 및 수정", type="primary", use_container_width=True):
             if not st.session_state.reason_input.strip():
                 st.error("⚠️ 근무 사유를 반드시 적어주세요!")
             else:
@@ -162,7 +215,7 @@ with col1:
                 row_to_update = -1
                 
                 for i, row in enumerate(all_data):
-                    if i > 0 and len(row) >= 4 and row[1] == st.session_state.selected_name and row[2] == today_str:
+                    if i > 0 and len(row) >= 4 and row[1] == st.session_state.current_user and row[2] == today_str:
                         row_to_update = i + 1 
                         break
                         
@@ -172,17 +225,17 @@ with col1:
                     st.success(f"🔄 변경 완료!")
                 else:
                     new_id = len(all_data)
-                    sheet.append_row([new_id, st.session_state.selected_name, today_str, st.session_state.selected_end_time, st.session_state.reason_input])
+                    sheet.append_row([new_id, st.session_state.current_user, today_str, st.session_state.selected_end_time, st.session_state.reason_input])
                     st.success(f"🎉 등록 완료!")
                 
                 st.rerun()
             
-        if st.button(f"🗑️ {st.session_state.selected_name} 취소", type="secondary", use_container_width=True):
+        if st.button(f"🗑️ 계획 취소", type="secondary", use_container_width=True):
             all_data = sheet.get_all_values()
             row_to_delete = -1
             
             for i, row in enumerate(all_data):
-                if i > 0 and len(row) >= 4 and row[1] == st.session_state.selected_name and row[2] == today_str:
+                if i > 0 and len(row) >= 4 and row[1] == st.session_state.current_user and row[2] == today_str:
                     row_to_delete = i + 1
                     break
                     
@@ -195,23 +248,26 @@ with col1:
 
 # --- 오른쪽 영역: 탭(Tab) 기반 야근 현황판 ---
 with col2:
-    # ⭐️ 기준 날짜 선택 (이 날짜를 기준으로 현황판과 주간 누적이 모두 변경됨)
     view_date = st.date_input("🗓️ 조회 기준 날짜 선택", today_date)
     view_str = view_date.strftime('%Y-%m-%d')
     
-    # ⭐️ 탭(Tab) 생성
-    tab1, tab2 = st.tabs(["📊 일간 현황", "⏱️ 주간 누적 (최근 8주)"])
-    
-    # 구글 시트에서 전체 데이터 한 번만 로드 (탭 공유용)
     all_data = sheet.get_all_values()
     
-    # === 탭 1: 일간 야근 현황 ===
+    # ⭐️ 수정: 관리자인 경우 탭 1개만, 일반 인원인 경우 탭 2개 생성
+    if st.session_state.current_user in admins:
+        tabs = st.tabs(["📊 팀 전체 일간 현황"])
+        tab1 = tabs[0]
+        has_tab2 = False
+    else:
+        tab1, tab2 = st.tabs(["📊 팀 전체 일간 현황", "📅 나의 8주 야근 달력 (비공개)"])
+        has_tab2 = True
+    
+    # === 탭 1: 전체 일간 야근 현황 ===
     with tab1:
-        st.header(f"📊 야근 현황판 ({view_str})")
+        st.header(f"📊 {view_str} 야근 현황")
         grid_df = pd.DataFrame(index=time_slots, columns=members).fillna("")
         records = []
         
-        # 해당 날짜 기록 필터링
         for row in all_data[1:]:
             if len(row) >= 4 and row[2] == view_str:
                 row_name = row[1]
@@ -219,7 +275,6 @@ with col2:
                 reason = row[4] if len(row) >= 5 and row[4].strip() != "" else "업무 연장"
                 records.append((row_name, row_end_time, reason))
         
-        # 테이블 표기
         for name, end_t, reason in records:
             if end_t in grid_df.index and name in grid_df.columns:
                 grid_df.loc[end_t, name] = "✔️ 야근"
@@ -237,12 +292,17 @@ with col2:
         
         st.write("") 
         
-        # 엑셀 다운로드 (일간 기준)
         template_path = "template.xlsx"
         if os.path.exists(template_path):
             wb = openpyxl.load_workbook(template_path)
             ws = wb.active
+            
+            # 날짜 기입
             ws['F3'] = view_str
+            
+            # 현재 접속자가 관리자일 경우 H3 셀에 이름 기입
+            if st.session_state.current_user in admins:
+                ws['H3'] = st.session_state.current_user
             
             start_row = 8
             for idx, (name, end_t, reason) in enumerate(records, start=1):
@@ -264,65 +324,83 @@ with col2:
                 use_container_width=True
             )
 
-    # === 탭 2: 주간 누적 8주 현황 ===
-    with tab2:
-        # 선택한 날짜가 속한 주의 월요일
-        current_week_start = view_date - timedelta(days=view_date.weekday())
-        
-        # 과거 8주 차 날짜 범위 계산 (오래된 주 -> 현재 주 순서로 나열)
-        weeks_info = []
-        for i in range(7, -1, -1):
-            w_start = current_week_start - timedelta(weeks=i)
-            w_end = w_start + timedelta(days=6)
-            label = f"{w_start.strftime('%m/%d')} ~ {w_end.strftime('%m/%d')}"
-            weeks_info.append({"start": w_start, "end": w_end, "label": label})
-            
-        # 데이터를 담을 딕셔너리 초기화
-        weekly_data = { w["label"]: { m: 0.0 for m in members } for w in weeks_info }
-        
-        def calculate_overtime_hours(end_time_str):
-            try:
-                start = datetime.strptime("17:30", "%H:%M")
-                end = datetime.strptime(end_time_str, "%H:%M")
-                return (end - start).total_seconds() / 3600.0
-            except ValueError:
-                return 0.0
-
-        # 구글 시트 전체 기록에서 8주 이내 데이터 필터링하여 합산
-        for row in all_data[1:]: 
-            if len(row) >= 4:
+    # === 탭 2: 요일별 8주 달력 (월~토, ⭐️ 일반 인원 전용) ===
+    if has_tab2:
+        with tab2:
+            current_week_start = view_date - timedelta(days=view_date.weekday())
+            weeks_info = []
+            for i in range(7, -1, -1):
+                w_start = current_week_start - timedelta(weeks=i)
+                w_end = w_start + timedelta(days=6)
+                label = f"{w_start.strftime('%m/%d')} ~ {w_end.strftime('%m/%d')}"
+                weeks_info.append({"start": w_start, "end": w_end, "label": label})
+                
+            def calculate_overtime_hours(end_time_str):
                 try:
-                    row_date = datetime.strptime(row[2], "%Y-%m-%d").date()
-                    row_name = row[1]
-                    row_end_time = row[3]
-                    
-                    # 8주의 처음과 끝 사이에 포함되는지 먼저 확인
-                    if weeks_info[0]["start"] <= row_date <= weeks_info[-1]["end"] and row_name in members:
-                        # 어느 주차에 속하는지 찾아 누적합
-                        for w in weeks_info:
-                            if w["start"] <= row_date <= w["end"]:
-                                weekly_data[w["label"]][row_name] += calculate_overtime_hours(row_end_time)
-                                break
+                    start = datetime.strptime("17:30", "%H:%M")
+                    end = datetime.strptime(end_time_str, "%H:%M")
+                    return (end - start).total_seconds() / 3600.0
                 except ValueError:
-                    continue
-        
-        # 8주 현황 렌더링
-        st.subheader("⏱️ 최근 8주 누적 야근 시간")
-        
-        weekly_html = '<table class="weekly-summary-table"><thead><tr><th>주차 (기간)</th>'
-        for member in members:
-            weekly_html += f'<th>{member}</th>'
-        weekly_html += '</tr></thead><tbody>'
-        
-        # 주차별 행 추가
-        for w in weeks_info:
-            label = w["label"]
-            weekly_html += f'<tr><td class="weekly-label">{label}</td>'
-            for member in members:
-                hours = weekly_data[label][member]
-                display_text = f"{hours:.1f}h" if hours > 0 else "-"
-                weekly_html += f'<td class="weekly-hours">{display_text}</td>'
-            weekly_html += '</tr>'
+                    return 0.0
+
+            st.subheader("📅 나의 8주 상세 달력")
+            st.info(f"이 데이터는 오직 **{st.session_state.current_user}** 님에게만 표시됩니다.")
+            target_user = st.session_state.current_user
+
+            calendar_data = { w["label"]: [0.0] * 7 for w in weeks_info }
+
+            for row in all_data[1:]: 
+                if len(row) >= 4:
+                    try:
+                        row_name = row[1]
+                        if row_name == target_user:
+                            row_date = datetime.strptime(row[2], "%Y-%m-%d").date()
+                            row_end_time = row[3]
+                            
+                            if weeks_info[0]["start"] <= row_date <= weeks_info[-1]["end"]:
+                                for w in weeks_info:
+                                    if w["start"] <= row_date <= w["end"]:
+                                        day_idx = row_date.weekday()
+                                        calendar_data[w["label"]][day_idx] += calculate_overtime_hours(row_end_time)
+                                        break
+                    except ValueError:
+                        continue
             
-        weekly_html += '</tbody></table>'
-        st.markdown(weekly_html, unsafe_allow_html=True)
+            weekly_html = '''
+            <table class="weekly-summary-table">
+                <colgroup>
+                    <col style="width: 26%;">
+                    <col style="width: 10%;">
+                    <col style="width: 10%;">
+                    <col style="width: 10%;">
+                    <col style="width: 10%;">
+                    <col style="width: 10%;">
+                    <col style="width: 10%;">
+                    <col style="width: 14%;">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>주차 (기간)</th>
+                        <th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th>토</th>
+                        <th>합계</th>
+                    </tr>
+                </thead>
+                <tbody>
+            '''
+            
+            for w in weeks_info:
+                label = w["label"]
+                days = calendar_data[label][:6] 
+                week_total = sum(days)
+                
+                weekly_html += f'<tr><td class="weekly-label">{label}</td>'
+                
+                for d in days:
+                    display_d = f"{d:.1f}h" if d > 0 else "-"
+                    weekly_html += f'<td>{display_d}</td>'
+                    
+                display_total = f"{week_total:.1f}h" if week_total > 0 else "-"
+                weekly_html += f'<td class="weekly-hours">{display_total}</td></tr>'
+                
+            weekly_html += '</tbody></table>'
+            st.markdown(weekly_html, unsafe_allow_html=True)
