@@ -165,6 +165,16 @@ def init_connection():
 
 sheet = init_connection()
 
+# ⭐️ 핵심 패치: 구글 시트의 빈칸 패딩 오류를 막아주는 똑똑한 근무 형태 감지 함수
+def get_work_type(row):
+    # 1. 6번째 열에 값이 제대로 기입되어 있는 경우
+    if len(row) >= 6 and row[5].strip() != "":
+        return row[5].strip()
+    # 2. 예전 데이터라 6번째 열이 없거나 빈칸일 경우 -> 시간으로 유추
+    if len(row) >= 4 and row[3] in ["12:00", "17:00"]:
+        return "휴일"
+    return "야간"
+
 # --- 4. 기타 상태 관리 ---
 if "night_end_time" not in st.session_state: st.session_state.night_end_time = night_time_slots[0]
 if "night_reason" not in st.session_state: st.session_state.night_reason = ""
@@ -181,7 +191,6 @@ with col1:
     st.header(f"📝 근무 계획 등록")
     st.markdown(f"**1. 등록 대상자:** `{st.session_state.current_user}`")
     
-    # ⭐️ 관리자인 경우 탭 없이 휴일근무만 표시, 일반인원은 탭 2개 분리
     if st.session_state.current_user in admins:
         st.info("💡 관리자 권한: '휴일근무'만 등록할 수 있습니다.")
         tabs = st.tabs(["☀️ 휴일근무"])
@@ -192,7 +201,6 @@ with col1:
         tab_night, tab_holiday = tabs[0], tabs[1]
         has_night_tab = True
     
-    # [야간근무 탭 로직] - 일반 인원일 때만 생성
     if has_night_tab:
         with tab_night:
             st.info(f"💡 오늘(**{today_str}**) 기준으로 야근이 등록됩니다.")
@@ -220,14 +228,14 @@ with col1:
                         all_data = sheet.get_all_values()
                         row_to_update = -1
                         for i, row in enumerate(all_data):
-                            row_wt = row[5] if len(row) >= 6 else "야간"
+                            row_wt = get_work_type(row)
                             if i > 0 and len(row) >= 4 and row[1] == st.session_state.current_user and row[2] == today_str and row_wt == "야간":
                                 row_to_update = i + 1 
                                 break
                         if row_to_update != -1:
                             sheet.update_cell(row_to_update, 4, st.session_state.night_end_time) 
                             sheet.update_cell(row_to_update, 5, st.session_state.night_reason)
-                            if len(all_data[row_to_update-1]) < 6: sheet.update_cell(row_to_update, 6, "야간")
+                            sheet.update_cell(row_to_update, 6, "야간") # ⭐️ 6열 무조건 강제 주입
                             st.success(f"🔄 야간근무 변경 완료!")
                         else:
                             new_id = len(all_data)
@@ -239,7 +247,7 @@ with col1:
                     all_data = sheet.get_all_values()
                     row_to_delete = -1
                     for i, row in enumerate(all_data):
-                        row_wt = row[5] if len(row) >= 6 else "야간"
+                        row_wt = get_work_type(row)
                         if i > 0 and len(row) >= 4 and row[1] == st.session_state.current_user and row[2] == today_str and row_wt == "야간":
                             row_to_delete = i + 1
                             break
@@ -250,7 +258,6 @@ with col1:
                         st.info(f"ℹ️ 기록 없음")
                     st.rerun()
 
-    # [휴일근무 탭 로직] - 모두에게 표시
     with tab_holiday:
         st.info(f"💡 이번 주 토요일(**{this_saturday_str}**) 기준으로 휴일근무가 등록됩니다.")
         st.markdown("**2. 종료 시간을 선택하세요**")
@@ -277,13 +284,14 @@ with col1:
                     all_data = sheet.get_all_values()
                     row_to_update = -1
                     for i, row in enumerate(all_data):
-                        row_wt = row[5] if len(row) >= 6 else "야간"
+                        row_wt = get_work_type(row)
                         if i > 0 and len(row) >= 4 and row[1] == st.session_state.current_user and row[2] == this_saturday_str and row_wt == "휴일":
                             row_to_update = i + 1 
                             break
                     if row_to_update != -1:
                         sheet.update_cell(row_to_update, 4, st.session_state.holiday_end_time) 
                         sheet.update_cell(row_to_update, 5, st.session_state.holiday_reason)
+                        sheet.update_cell(row_to_update, 6, "휴일") # ⭐️ 6열 무조건 강제 주입
                         st.success(f"🔄 휴일근무 변경 완료!")
                     else:
                         new_id = len(all_data)
@@ -295,7 +303,7 @@ with col1:
                 all_data = sheet.get_all_values()
                 row_to_delete = -1
                 for i, row in enumerate(all_data):
-                    row_wt = row[5] if len(row) >= 6 else "야간"
+                    row_wt = get_work_type(row)
                     if i > 0 and len(row) >= 4 and row[1] == st.session_state.current_user and row[2] == this_saturday_str and row_wt == "휴일":
                         row_to_delete = i + 1
                         break
@@ -316,7 +324,6 @@ with col2:
     
     all_data = sheet.get_all_values()
     
-    # ⭐️ 이제 모든 사람에게 3개의 탭(야간, 휴일, 8주달력)이 모두 표출됩니다.
     if st.session_state.current_user in admins:
         tab1, tab2, tab3 = st.tabs(["🌙 야간근무 현황", "☀️ 휴일근무 현황 (토요일)", "📅 8주 상세 달력 조회 (관리자)"])
     else:
@@ -330,7 +337,7 @@ with col2:
         
         for row in all_data[1:]:
             if len(row) >= 4 and row[2] == view_str:
-                row_wt = row[5] if len(row) >= 6 else "야간"
+                row_wt = get_work_type(row) # ⭐️ 오류 패치 적용
                 if row_wt == "야간":
                     row_name = row[1]
                     row_end_time = row[3]
@@ -392,7 +399,7 @@ with col2:
         
         for row in all_data[1:]:
             if len(row) >= 4 and row[2] == view_saturday_str:
-                row_wt = row[5] if len(row) >= 6 else "야간"
+                row_wt = get_work_type(row) # ⭐️ 오류 패치 적용
                 if row_wt == "휴일":
                     row_name = row[1]
                     row_end_time = row[3]
@@ -471,7 +478,6 @@ with col2:
             except ValueError:
                 return 0.0
 
-        # ⭐️ 관리자일 경우 드롭다운 활성화 (기본 선택값을 본인으로 세팅)
         if st.session_state.current_user in admins:
             st.subheader("📅 8주 상세 달력 조회")
             default_index = HOLIDAY_USERS.index(st.session_state.current_user)
@@ -490,7 +496,7 @@ with col2:
                     if row_name == target_user:
                         row_date = datetime.strptime(row[2], "%Y-%m-%d").date()
                         row_end_time = row[3]
-                        row_wt = row[5] if len(row) >= 6 else "야간"
+                        row_wt = get_work_type(row) # ⭐️ 오류 패치 적용
                         
                         if weeks_info[0]["start"] <= row_date <= weeks_info[-1]["end"]:
                             for w in weeks_info:
