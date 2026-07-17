@@ -28,50 +28,76 @@ st.set_page_config(
 # ⭐️ CSS 스타일 전역 주입
 custom_css = """
 <style>
+    /* 1. 기본 UI 요소 및 상단 헤더 완전 숨기기 */
     [data-testid="stToolbar"], [data-testid="stAppDeployButton"], 
     [data-testid="stStatusWidget"], [data-testid="stDecoration"], 
-    [data-testid="collapsedControl"] { display: none !important; }
-    
-    .stApp, .block-container { overflow-x: hidden !important; max-width: 100vw !important; padding-top: 2rem !important; }
-    
-    @media (max-width: 768px) {
-        h1 { white-space: nowrap !important; font-size: 5.5vw !important; letter-spacing: -0.5px !important; }
-        h2 { white-space: nowrap !important; font-size: 4.5vw !important; letter-spacing: -0.5px !important; }
+    [data-testid="collapsedControl"], header[data-testid="stHeader"] { 
+        display: none !important; 
     }
     
-    .custom-overtime-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 15px; table-layout: fixed; }
-    .custom-overtime-table th, .custom-overtime-table td { border: 1px solid #dcdde1; padding: 10px 2px; text-align: center !important; vertical-align: middle !important; }
+    /* 2. 전체 스크롤바 투명하게 숨기기 */
+    ::-webkit-scrollbar { width: 0px; height: 0px; background: transparent; }
+    html, body { -ms-overflow-style: none; scrollbar-width: none; overflow-x: hidden; }
+    
+    /* 3. 위아래 여백 대폭 축소 */
+    .stApp, .block-container { 
+        padding-top: 2rem !important; 
+        padding-bottom: 1rem !important; 
+        max-width: 100vw !important; 
+    }
+    
+    @media (max-width: 768px) {
+        .block-container {
+            padding-left: 0.8rem !important;
+            padding-right: 0.8rem !important;
+        }
+        h1, h2, h3 {
+            white-space: normal !important;
+            word-break: keep-all !important;
+            font-size: 6vw !important;
+            letter-spacing: -0.5px !important;
+        }
+    }
+    
+    /* 탭(Tab) 아래 여백 축소 */
+    .stTabs [data-baseweb="tab-panel"] { padding-top: 0.5rem !important; }
+    
+    /* 테이블 디자인 */
+    .custom-overtime-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14.5px; table-layout: fixed; }
+    .custom-overtime-table th, .custom-overtime-table td { border: 1px solid #dcdde1; padding: 6px 2px; text-align: center !important; vertical-align: middle !important; }
     .custom-overtime-table th { background-color: #f0f2f6; color: #31333F; font-weight: bold; }
     .overtime-checked { background-color: #fff5f5; color: #ff4b4b; font-weight: bold; }
     
     @media (max-width: 768px) {
-        .custom-overtime-table { font-size: 3vw !important; }
-        .custom-overtime-table th, .custom-overtime-table td { padding: 4px 0px !important; height: 35px; white-space: nowrap !important; letter-spacing: -0.5px !important; }
-        .overtime-checked { font-size: 2.8vw !important; letter-spacing: -1px !important; }
+        .custom-overtime-table { font-size: 2.8vw !important; }
+        .custom-overtime-table th, .custom-overtime-table td { padding: 4px 0px !important; height: 30px; white-space: nowrap !important; letter-spacing: -0.5px !important; }
+        .overtime-checked { font-size: 2.6vw !important; letter-spacing: -1px !important; }
     }
     
+    /* 버튼 2열 그리드 배치 */
     div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) {
-        display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 8px !important;
+        display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 6px !important;
     }
     div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:not(:has(style)) {
-        width: calc(50% - 4px) !important; flex: 0 0 calc(50% - 4px) !important; min-width: 0 !important; 
+        width: calc(50% - 3px) !important; flex: 0 0 calc(50% - 3px) !important; min-width: 0 !important; 
     }
     div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:has(style) {
         display: none !important;
     }
     div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) button {
-        white-space: nowrap !important; height: auto !important; min-height: 42px !important;
+        white-space: nowrap !important; height: auto !important; min-height: 38px !important; padding: 0 !important;
     }
     
-    .weekly-summary-table { width: 100%; text-align: center; font-size: 13.5px; margin-top: 10px; border-collapse: collapse; table-layout: fixed; }
-    .weekly-summary-table th, .weekly-summary-table td { border: 1px solid #dcdde1; padding: 8px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* 8주 달력 테이블 스타일 */
+    .weekly-summary-table { width: 100%; text-align: center; font-size: 13.5px; margin-top: 5px; border-collapse: collapse; table-layout: fixed; }
+    .weekly-summary-table th, .weekly-summary-table td { border: 1px solid #dcdde1; padding: 6px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .weekly-summary-table th { background-color: #e8f0fe; color: #1a73e8; }
     .weekly-hours { font-weight: bold; color: #2c3e50; background-color: #f1f3f5; }
     .weekly-label { font-weight: bold; background-color: #f8f9fa; color: #31333F; }
     
     @media (max-width: 768px) {
-        .weekly-summary-table { font-size: 2.5vw !important; }
-        .weekly-summary-table th, .weekly-summary-table td { padding: 4px 2px !important; }
+        .weekly-summary-table { font-size: 2.3vw !important; }
+        .weekly-summary-table th, .weekly-summary-table td { padding: 3px 1px !important; }
     }
 </style>
 """
@@ -84,7 +110,7 @@ if "login_selected_user" not in st.session_state: st.session_state.login_selecte
 
 # 🔒 로그인 화면
 if not st.session_state.logged_in:
-    st.title("🏢 T/S 근무 계획 관리 시스템")
+    st.markdown("## 🏢 T/S 근무 계획 관리 시스템")
     st.caption("✨ Created by tskwon")
     
     _, col_login, _ = st.columns([1, 1.5, 1])
@@ -127,17 +153,18 @@ if not st.session_state.logged_in:
 # =====================================================================
 # 로그인 성공 시 메인 화면
 # =====================================================================
+
 top_col1, top_col2 = st.columns([4, 1])
 with top_col1:
-    st.title("🏢 T/S 근무 계획 관리 시스템")
+    st.markdown("## 🏢 T/S 근무 계획 관리 시스템") 
+    # ⭐️ 메인 화면에도 Created by 추가
     st.caption("✨ Created by tskwon")
 with top_col2:
-    st.write("") 
     if st.button("🚪 로그아웃", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.current_user = None
         st.rerun()
-st.write("---") 
+st.markdown("---") 
 
 # --- 2. 고정 데이터 및 날짜 정의 ---
 night_time_slots = ["19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"]
@@ -165,12 +192,9 @@ def init_connection():
 
 sheet = init_connection()
 
-# ⭐️ 핵심 패치: 구글 시트의 빈칸 패딩 오류를 막아주는 똑똑한 근무 형태 감지 함수
 def get_work_type(row):
-    # 1. 6번째 열에 값이 제대로 기입되어 있는 경우
     if len(row) >= 6 and row[5].strip() != "":
         return row[5].strip()
-    # 2. 예전 데이터라 6번째 열이 없거나 빈칸일 경우 -> 시간으로 유추
     if len(row) >= 4 and row[3] in ["12:00", "17:00"]:
         return "휴일"
     return "야간"
@@ -188,8 +212,7 @@ col1, col2 = st.columns([1, 1.5])
 
 # --- 왼쪽 영역: 근무 계획 등록/수정/취소 ---
 with col1:
-    st.header(f"📝 근무 계획 등록")
-    st.markdown(f"**1. 등록 대상자:** `{st.session_state.current_user}`")
+    st.markdown(f"#### 📝 계획 등록 (대상: `{st.session_state.current_user}`)")
     
     if st.session_state.current_user in admins:
         st.info("💡 관리자 권한: '휴일근무'만 등록할 수 있습니다.")
@@ -203,8 +226,8 @@ with col1:
     
     if has_night_tab:
         with tab_night:
-            st.info(f"💡 오늘(**{today_str}**) 기준으로 야근이 등록됩니다.")
-            st.markdown("**2. 종료 시간을 선택하세요**")
+            st.caption(f"💡 오늘(**{today_str}**) 기준으로 야근이 등록됩니다.")
+            st.markdown("**1. 종료 시간을 선택하세요**")
             with st.container():
                 st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
                 for t_slot in night_time_slots:
@@ -213,14 +236,11 @@ with col1:
                         st.session_state.night_end_time = t_slot
                         st.rerun()
                         
-            st.write("") 
-            st.markdown("**3. 근무 사유를 입력하세요 (필수)**")
+            st.markdown("**2. 근무 사유를 입력하세요**")
             st.text_input("사유 입력", key="night_reason", label_visibility="collapsed", placeholder="예: B/T 3건 및 견뢰도 Test")
-            st.write("") 
 
             with st.container():
                 st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
-                
                 if st.button(f"🚀 야간 등록/수정", key="n_reg", type="primary", use_container_width=True):
                     if not st.session_state.night_reason.strip():
                         st.error("⚠️ 근무 사유를 반드시 적어주세요!")
@@ -235,7 +255,7 @@ with col1:
                         if row_to_update != -1:
                             sheet.update_cell(row_to_update, 4, st.session_state.night_end_time) 
                             sheet.update_cell(row_to_update, 5, st.session_state.night_reason)
-                            sheet.update_cell(row_to_update, 6, "야간") # ⭐️ 6열 무조건 강제 주입
+                            sheet.update_cell(row_to_update, 6, "야간") 
                             st.success(f"🔄 야간근무 변경 완료!")
                         else:
                             new_id = len(all_data)
@@ -259,8 +279,8 @@ with col1:
                     st.rerun()
 
     with tab_holiday:
-        st.info(f"💡 이번 주 토요일(**{this_saturday_str}**) 기준으로 휴일근무가 등록됩니다.")
-        st.markdown("**2. 종료 시간을 선택하세요**")
+        st.caption(f"💡 이번 주 토요일(**{this_saturday_str}**) 기준으로 휴일근무가 등록됩니다.")
+        st.markdown("**1. 종료 시간을 선택하세요**")
         with st.container():
             st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
             for t_slot in holiday_time_slots:
@@ -269,14 +289,11 @@ with col1:
                     st.session_state.holiday_end_time = t_slot
                     st.rerun()
                     
-        st.write("") 
-        st.markdown("**3. 근무 사유를 입력하세요 (필수)**")
+        st.markdown("**2. 근무 사유를 입력하세요**")
         st.text_input("사유 입력", key="holiday_reason", label_visibility="collapsed", placeholder="예: 공장 라인 점검")
-        st.write("") 
 
         with st.container():
             st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
-            
             if st.button(f"☀️ 휴일 등록/수정", key="h_reg", type="primary", use_container_width=True):
                 if not st.session_state.holiday_reason.strip():
                     st.error("⚠️ 근무 사유를 반드시 적어주세요!")
@@ -291,7 +308,7 @@ with col1:
                     if row_to_update != -1:
                         sheet.update_cell(row_to_update, 4, st.session_state.holiday_end_time) 
                         sheet.update_cell(row_to_update, 5, st.session_state.holiday_reason)
-                        sheet.update_cell(row_to_update, 6, "휴일") # ⭐️ 6열 무조건 강제 주입
+                        sheet.update_cell(row_to_update, 6, "휴일") 
                         st.success(f"🔄 휴일근무 변경 완료!")
                     else:
                         new_id = len(all_data)
@@ -316,7 +333,7 @@ with col1:
 
 # --- 오른쪽 영역: 탭(Tab) 기반 현황판 ---
 with col2:
-    view_date = st.date_input("🗓️ 조회 기준 날짜 선택 (평일을 골라도 해당 주 토요일 휴일근무 확인 가능)", today_date)
+    view_date = st.date_input("🗓️ 조회 기준 날짜 선택", today_date)
     view_str = view_date.strftime('%Y-%m-%d')
     
     view_saturday_date = view_date + timedelta(days=(5 - view_date.weekday()))
@@ -325,19 +342,18 @@ with col2:
     all_data = sheet.get_all_values()
     
     if st.session_state.current_user in admins:
-        tab1, tab2, tab3 = st.tabs(["🌙 야간근무 현황", "☀️ 휴일근무 현황 (토요일)", "📅 8주 상세 달력 조회 (관리자)"])
+        tab1, tab2, tab3 = st.tabs(["🌙 야간 현황", "☀️ 휴일 현황", "📅 8주 달력 조회"])
     else:
-        tab1, tab2, tab3 = st.tabs(["🌙 야간근무 현황", "☀️ 휴일근무 현황 (토요일)", "📅 나의 8주 달력 (야간+휴일)"])
+        tab1, tab2, tab3 = st.tabs(["🌙 야간 현황", "☀️ 휴일 현황", "📅 나의 8주 달력"])
     
     # === 탭 1: 야간근무 현황 ===
     with tab1:
-        st.header(f"🌙 {view_str} 야간근무")
         grid_df = pd.DataFrame(index=night_time_slots, columns=members).fillna("")
         records_night = []
         
         for row in all_data[1:]:
             if len(row) >= 4 and row[2] == view_str:
-                row_wt = get_work_type(row) # ⭐️ 오류 패치 적용
+                row_wt = get_work_type(row) 
                 if row_wt == "야간":
                     row_name = row[1]
                     row_end_time = row[3]
@@ -360,7 +376,6 @@ with col2:
             html_code += '</tr>'
         html_code += '</tbody></table>'
         st.markdown(html_code, unsafe_allow_html=True)
-        st.write("") 
         
         template_path = "template.xlsx"
         if os.path.exists(template_path):
@@ -393,13 +408,12 @@ with col2:
 
     # === 탭 2: 휴일근무 현황 ===
     with tab2:
-        st.header(f"☀️ {view_saturday_str} 휴일근무")
         grid_df_holiday = pd.DataFrame(index=holiday_time_slots, columns=HOLIDAY_USERS).fillna("")
         records_holiday = []
         
         for row in all_data[1:]:
             if len(row) >= 4 and row[2] == view_saturday_str:
-                row_wt = get_work_type(row) # ⭐️ 오류 패치 적용
+                row_wt = get_work_type(row) 
                 if row_wt == "휴일":
                     row_name = row[1]
                     row_end_time = row[3]
@@ -422,7 +436,6 @@ with col2:
             html_code_h += '</tr>'
         html_code_h += '</tbody></table>'
         st.markdown(html_code_h, unsafe_allow_html=True)
-        st.write("") 
         
         if os.path.exists(template_path):
             wb_h = openpyxl.load_workbook(template_path)
@@ -479,12 +492,10 @@ with col2:
                 return 0.0
 
         if st.session_state.current_user in admins:
-            st.subheader("📅 8주 상세 달력 조회")
             default_index = HOLIDAY_USERS.index(st.session_state.current_user)
             target_user = st.selectbox("📌 조회할 인원을 선택하세요", HOLIDAY_USERS, index=default_index)
         else:
-            st.subheader("📅 나의 8주 상세 달력")
-            st.info(f"이 데이터는 오직 **{st.session_state.current_user}** 님에게만 표시됩니다.")
+            st.caption(f"💡 이 데이터는 오직 **{st.session_state.current_user}** 님에게만 표시됩니다.")
             target_user = st.session_state.current_user
 
         calendar_data = { w["label"]: [0.0] * 7 for w in weeks_info }
@@ -496,7 +507,7 @@ with col2:
                     if row_name == target_user:
                         row_date = datetime.strptime(row[2], "%Y-%m-%d").date()
                         row_end_time = row[3]
-                        row_wt = get_work_type(row) # ⭐️ 오류 패치 적용
+                        row_wt = get_work_type(row) 
                         
                         if weeks_info[0]["start"] <= row_date <= weeks_info[-1]["end"]:
                             for w in weeks_info:
