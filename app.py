@@ -139,15 +139,21 @@ if not st.session_state.logged_in:
         
         st.write("")
         st.markdown(f"**현재 선택됨:** `{st.session_state.login_selected_user}`")
-        pin_input = st.text_input("🔑 비밀번호", type="password", placeholder="비밀번호 4자리 입력")
         
-        if st.button("🚀 로그인", type="primary", use_container_width=True):
-            if USER_PINS.get(st.session_state.login_selected_user) == pin_input:
-                st.session_state.logged_in = True
-                st.session_state.current_user = st.session_state.login_selected_user
-                st.rerun()
-            else:
-                st.error("⚠️ 비밀번호가 일치하지 않습니다.")
+        # st.form을 사용하여 묶어주면 텍스트 창에서 엔터(Enter) 시 자동으로 실행됩니다.
+        with st.form("login_form", border=False):
+            pin_input = st.text_input("🔑 비밀번호", type="password", placeholder="비밀번호 4자리 입력")
+            
+            # st.button 대신 st.form_submit_button으로 변경
+            submitted = st.form_submit_button("🚀 로그인", type="primary", use_container_width=True)
+            
+            if submitted:
+                if USER_PINS.get(st.session_state.login_selected_user) == pin_input:
+                    st.session_state.logged_in = True
+                    st.session_state.current_user = st.session_state.login_selected_user
+                    st.rerun()
+                else:
+                    st.error("⚠️ 비밀번호가 일치하지 않습니다.")
     st.stop() 
 
 # =====================================================================
