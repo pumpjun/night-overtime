@@ -16,22 +16,16 @@ HOLIDAY_USERS = admins + members
 
 USER_PINS = {user: "5050" for user in ALL_USERS}
 
-# 모바일/PC 넓게 쓰기 설정 및 사이드바 기본 숨김 (이모티콘 제거)
+# 모바일/PC 넓게 쓰기 설정 및 사이드바 기본 숨김
 st.set_page_config(
     page_title="T/S 근무 관리",       
     layout="wide", 
     initial_sidebar_state="collapsed" 
 )
 
-# ⭐️ CSS 스타일 전역 주입 (Material Icons 수직 정렬 보정 포함)
+# ⭐️ CSS 스타일 전역 주입
 custom_css = """
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
 <style>
-    /* 0. Material Icon 자체 여백 및 수직 정렬 보정 */
-    .material-symbols-outlined {
-        line-height: 1 !important; /* 아이콘 위아래 불필요한 여백 제거 */
-    }
-
     /* 1. 기본 UI 요소 및 상단 헤더 완전 숨기기 */
     [data-testid="stToolbar"], [data-testid="stAppDeployButton"], 
     [data-testid="stStatusWidget"], [data-testid="stDecoration"], 
@@ -290,19 +284,16 @@ if "login_selected_user" not in st.session_state: st.session_state.login_selecte
 
 # 🔒 로그인 화면
 if not st.session_state.logged_in:
-    # 제목 Flexbox 적용
-    st.markdown(
-        "<h2 style='display: flex; align-items: center; margin-top: 0;'><span class='material-symbols-outlined' style='font-size:36px; margin-right:8px;'>domain</span>T/S 근무 계획 관리 시스템</h2>", 
-        unsafe_allow_html=True
-    )
+    # 🌟 완벽한 정렬을 보장하는 네이티브 문법 사용
+    st.markdown("## :material/domain: T/S 근무 계획 관리 시스템")
     st.caption("Created by tskwon :material/science:")
     
     _, col_login, _ = st.columns([1, 1.5, 1])
     with col_login:
         st.write("")
-        st.markdown("<h3 style='display: flex; align-items: center; margin-bottom: 15px;'><span class='material-symbols-outlined' style='margin-right:6px;'>lock</span>시스템 로그인</h3>", unsafe_allow_html=True)
+        st.markdown("### :material/lock: 시스템 로그인")
         
-        st.markdown("<h5 style='display: flex; align-items: center; margin-bottom: 10px;'><span class='material-symbols-outlined' style='margin-right:6px;'>person</span>야근인원</h5>", unsafe_allow_html=True)
+        st.markdown("##### :material/person: 야근인원")
         with st.container():
             st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
             for user in members:
@@ -312,7 +303,7 @@ if not st.session_state.logged_in:
                     st.rerun()
                     
         st.write("")
-        st.markdown("<h5 style='display: flex; align-items: center; margin-bottom: 10px;'><span class='material-symbols-outlined' style='margin-right:6px;'>shield_person</span>관리자</h5>", unsafe_allow_html=True)
+        st.markdown("##### :material/shield_person: 관리자")
         with st.container():
             st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
             for user in admins:
@@ -343,10 +334,7 @@ if not st.session_state.logged_in:
 
 top_col1, top_col2 = st.columns([4, 1])
 with top_col1:
-    st.markdown(
-        "<h2 style='display: flex; align-items: center; margin-top: 0;'><span class='material-symbols-outlined' style='font-size:36px; margin-right:8px;'>domain</span>T/S 근무 계획 관리 시스템</h2>", 
-        unsafe_allow_html=True
-    ) 
+    st.markdown("## :material/domain: T/S 근무 계획 관리 시스템") 
     st.caption("Created by tskwon :material/science:")
 with top_col2:
     if st.button("로그아웃", use_container_width=True, icon=":material/logout:"):
@@ -423,15 +411,13 @@ with col2:
 # ⭐️ 2. 좌측 화면(col1) 선언: 결재 상신 / 계획 등록
 with col1:
     if st.session_state.current_user in admins:
-        st.markdown(f'<h4 style="margin-top: 0px; margin-bottom: 15px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:8px;">inbox</span>결재 상신 데이터 <span style="{badge_style}">{st.session_state.current_user}</span></h4>', unsafe_allow_html=True)
+        st.markdown(f"#### :material/inbox: 결재 상신 데이터 <span style='{badge_style}'>{st.session_state.current_user}</span>", unsafe_allow_html=True)
         
         daily_pw = get_daily_password(today_str)
         st.info(f"오늘({today_str})의 지각자 예외 암호: **{daily_pw}** (직원 문의 시 안내)", icon=":material/key:")
         
-        st.markdown(f'''
-            <hr style="margin: 15px 0px 10px 0px; border: none; border-top: 1px solid #ddd;">
-            <h5 style="margin-top: 0px; margin-bottom: 10px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:6px; font-size: 24px;">dark_mode</span>야간 시간외근무 상신 ({view_str})</h5>
-        ''', unsafe_allow_html=True)
+        st.markdown("<hr style='margin: 15px 0px 10px 0px; border: none; border-top: 1px solid #ddd;'>", unsafe_allow_html=True)
+        st.markdown(f"##### :material/dark_mode: 야간 시간외근무 상신 ({view_str})")
         
         records_night = []
         for row in all_data[1:]:
@@ -455,7 +441,7 @@ with col1:
             render_copyable_table(records_night, "야간", view_str, st.session_state.current_user, is_past)
 
     else:
-        st.markdown(f'<h4 style="margin-top: 0px; margin-bottom: 15px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:8px;">edit_document</span>계획 등록 <span style="{badge_style}">{st.session_state.current_user}</span></h4>', unsafe_allow_html=True)
+        st.markdown(f"#### :material/edit_document: 계획 등록 <span style='{badge_style}'>{st.session_state.current_user}</span>", unsafe_allow_html=True)
         
         tabs = st.tabs([":material/dark_mode: 야간근무", ":material/light_mode: 휴일근무"])
         tab_night, tab_holiday = tabs[0], tabs[1]
@@ -655,10 +641,9 @@ with col2:
         st.markdown(html_code_h, unsafe_allow_html=True)
         
         if st.session_state.current_user in admins:
-            st.markdown(f'''
-                <hr style="margin: 25px 0px 10px 0px; border: none; border-top: 1px solid #ddd;">
-                <h5 style="margin-top: 0px; margin-bottom: 10px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:6px; font-size: 24px;">light_mode</span>휴일 시간외근무 상신 ({view_saturday_str})</h5>
-            ''', unsafe_allow_html=True)
+            st.markdown("<hr style='margin: 25px 0px 10px 0px; border: none; border-top: 1px solid #ddd;'>", unsafe_allow_html=True)
+            st.markdown(f"##### :material/light_mode: 휴일 시간외근무 상신 ({view_saturday_str})")
+            
             is_past_holiday = (view_saturday_date < today_date)
             render_copyable_table(records_holiday_view, "휴일", view_saturday_str, st.session_state.current_user, is_past_holiday)
 
