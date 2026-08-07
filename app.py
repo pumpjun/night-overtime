@@ -185,7 +185,7 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
             box-sizing: border-box;
         }}
         .copy-btn {{ background-color: #1b489d; }}
-        .copy-btn:hover {{ background-color: #2563eb; }}
+        .copy-btn:hover {{ background-color: #1b489d; }}
         
         .link-btn {{ background-color: #1b489d; }}
         .link-btn:hover {{ background-color: #ea580c; }}
