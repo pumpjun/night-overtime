@@ -163,7 +163,6 @@ if not st.session_state.logged_in:
 top_col1, top_col2 = st.columns([4, 1])
 with top_col1:
     st.markdown("## 🏢 T/S 근무 계획 관리 시스템") 
-    # ⭐️ 메인 화면에도 Created by 추가
     st.caption("✨ Created by tskwon")
 with top_col2:
     if st.button("🚪 로그아웃", use_container_width=True):
@@ -177,7 +176,8 @@ night_time_slots = ["19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00
 holiday_time_slots = ["12:00", "17:00"] 
 
 KST = timezone(timedelta(hours=9))
-today_date = datetime.now(KST).date()
+current_time = datetime.now(KST)
+today_date = current_time.date()
 today_str = today_date.strftime('%Y-%m-%d')
 
 this_saturday_date = today_date + timedelta(days=(5 - today_date.weekday()))
@@ -232,22 +232,37 @@ with col1:
     
     if has_night_tab:
         with tab_night:
+            # ⭐️ 변경: 금일 12:00 마감 타이머 로직
+            deadline_time = current_time.replace(hour=12, minute=0, second=0, microsecond=0)
+            is_past_deadline = current_time >= deadline_time
+            
+            if is_past_deadline:
+                st.error("⚠️ 금일 야간근무 등록 및 수정이 마감되었습니다. (12:00 마감)")
+            else:
+                time_diff = deadline_time - current_time
+                hours, remainder = divmod(time_diff.seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                st.info(f"⏳ 등록 마감까지 **{hours}시간 {minutes}분** 남았습니다. (12:00 마감)")
+            
             st.caption(f"💡 오늘(**{today_str}**) 기준으로 야근이 등록됩니다.")
             st.markdown("**1. 종료 시간을 선택하세요**")
             with st.container():
                 st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
                 for t_slot in night_time_slots:
                     btn_type = "primary" if t_slot == st.session_state.night_end_time else "secondary"
-                    if st.button(t_slot, key=f"n_{t_slot}", use_container_width=True, type=btn_type):
+                    # 마감 시간이 지났으면 시간 선택 버튼도 비활성화 처리
+                    if st.button(t_slot, key=f"n_{t_slot}", use_container_width=True, type=btn_type, disabled=is_past_deadline):
                         st.session_state.night_end_time = t_slot
                         st.rerun()
                         
             st.markdown("**2. 근무 사유를 입력하세요**")
-            st.text_input("사유 입력", key="night_reason", label_visibility="collapsed", placeholder="예: B/T 3건 및 견뢰도 Test")
+            st.text_input("사유 입력", key="night_reason", label_visibility="collapsed", placeholder="예: B/T 3건 및 견뢰도 Test", disabled=is_past_deadline)
 
             with st.container():
                 st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
-                if st.button(f"🚀 야간 등록/수정", key="n_reg", type="primary", use_container_width=True):
+                
+                # ⭐️ 버튼들에 disabled=is_past_deadline 속성 추가
+                if st.button(f"🚀 야간 등록/수정", key="n_reg", type="primary", use_container_width=True, disabled=is_past_deadline):
                     if not st.session_state.night_reason.strip():
                         st.error("⚠️ 근무 사유를 반드시 적어주세요!")
                     else:
@@ -269,7 +284,7 @@ with col1:
                             st.success(f"🎉 야간근무 등록 완료!")
                         st.rerun()
                     
-                if st.button(f"🗑️ 야간 취소", key="n_del", type="secondary", use_container_width=True):
+                if st.button(f"🗑️ 야간 취소", key="n_del", type="secondary", use_container_width=True, disabled=is_past_deadline):
                     all_data = sheet.get_all_values()
                     row_to_delete = -1
                     for i, row in enumerate(all_data):
@@ -404,13 +419,20 @@ with col2:
             wb.save(excel_buffer)
             excel_buffer.seek(0)
             
-            st.download_button(
-                label=f"📥 {view_str} 야간 양식 다운로드",
-                data=excel_buffer.getvalue(),
-                file_name=f"야근계획서_{view_str}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
+            # ⭐️ 변경: 관리자 양식 다운로드 12:10 제한 로직
+            is_viewing_today = (view_date == today_date)
+            download_avail_time = current_time.replace(hour=12, minute=10, second=0, microsecond=0)
+            
+            if is_viewing_today and current_time < download_avail_time:
+                st.warning("⚠️ 금일 야간 양식 다운로드는 **12:10분 이후**부터 가능합니다.")
+            else:
+                st.download_button(
+                    label=f"📥 {view_str} 야간 양식 다운로드",
+                    data=excel_buffer.getvalue(),
+                    file_name=f"야근계획서_{view_str}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
 
     # === 탭 2: 휴일근무 현황 ===
     with tab2:
