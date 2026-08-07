@@ -23,10 +23,15 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# ⭐️ CSS 스타일 전역 주입 (Material Icons 폰트 로드 포함)
+# ⭐️ CSS 스타일 전역 주입 (Material Icons 수직 정렬 보정 포함)
 custom_css = """
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
 <style>
+    /* 0. Material Icon 자체 여백 및 수직 정렬 보정 */
+    .material-symbols-outlined {
+        line-height: 1 !important; /* 아이콘 위아래 불필요한 여백 제거 */
+    }
+
     /* 1. 기본 UI 요소 및 상단 헤더 완전 숨기기 */
     [data-testid="stToolbar"], [data-testid="stAppDeployButton"], 
     [data-testid="stStatusWidget"], [data-testid="stDecoration"], 
@@ -285,8 +290,9 @@ if "login_selected_user" not in st.session_state: st.session_state.login_selecte
 
 # 🔒 로그인 화면
 if not st.session_state.logged_in:
+    # 제목 Flexbox 적용
     st.markdown(
-        "## <span class='material-symbols-outlined' style='font-size:32px; vertical-align:middle; margin-right:8px;'>domain</span>T/S 근무 계획 관리 시스템", 
+        "<h2 style='display: flex; align-items: center; margin-top: 0;'><span class='material-symbols-outlined' style='font-size:36px; margin-right:8px;'>domain</span>T/S 근무 계획 관리 시스템</h2>", 
         unsafe_allow_html=True
     )
     st.caption("Created by tskwon :material/science:")
@@ -294,9 +300,9 @@ if not st.session_state.logged_in:
     _, col_login, _ = st.columns([1, 1.5, 1])
     with col_login:
         st.write("")
-        st.markdown("### <span class='material-symbols-outlined' style='vertical-align:middle; margin-right:6px;'>lock</span>시스템 로그인", unsafe_allow_html=True)
+        st.markdown("<h3 style='display: flex; align-items: center; margin-bottom: 15px;'><span class='material-symbols-outlined' style='margin-right:6px;'>lock</span>시스템 로그인</h3>", unsafe_allow_html=True)
         
-        st.markdown("##### <span class='material-symbols-outlined' style='vertical-align:middle; margin-right:6px;'>person</span>야근인원", unsafe_allow_html=True)
+        st.markdown("<h5 style='display: flex; align-items: center; margin-bottom: 10px;'><span class='material-symbols-outlined' style='margin-right:6px;'>person</span>야근인원</h5>", unsafe_allow_html=True)
         with st.container():
             st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
             for user in members:
@@ -306,7 +312,7 @@ if not st.session_state.logged_in:
                     st.rerun()
                     
         st.write("")
-        st.markdown("##### <span class='material-symbols-outlined' style='vertical-align:middle; margin-right:6px;'>shield_person</span>관리자", unsafe_allow_html=True)
+        st.markdown("<h5 style='display: flex; align-items: center; margin-bottom: 10px;'><span class='material-symbols-outlined' style='margin-right:6px;'>shield_person</span>관리자</h5>", unsafe_allow_html=True)
         with st.container():
             st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
             for user in admins:
@@ -338,7 +344,7 @@ if not st.session_state.logged_in:
 top_col1, top_col2 = st.columns([4, 1])
 with top_col1:
     st.markdown(
-        "## <span class='material-symbols-outlined' style='font-size:32px; vertical-align:middle; margin-right:8px;'>domain</span>T/S 근무 계획 관리 시스템", 
+        "<h2 style='display: flex; align-items: center; margin-top: 0;'><span class='material-symbols-outlined' style='font-size:36px; margin-right:8px;'>domain</span>T/S 근무 계획 관리 시스템</h2>", 
         unsafe_allow_html=True
     ) 
     st.caption("Created by tskwon :material/science:")
@@ -424,7 +430,7 @@ with col1:
         
         st.markdown(f'''
             <hr style="margin: 15px 0px 10px 0px; border: none; border-top: 1px solid #ddd;">
-            <h5 style="margin-top: 0px; margin-bottom: 10px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:6px; font-size: 20px;">dark_mode</span>야간 시간외근무 상신 ({view_str})</h5>
+            <h5 style="margin-top: 0px; margin-bottom: 10px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:6px; font-size: 24px;">dark_mode</span>야간 시간외근무 상신 ({view_str})</h5>
         ''', unsafe_allow_html=True)
         
         records_night = []
@@ -651,7 +657,7 @@ with col2:
         if st.session_state.current_user in admins:
             st.markdown(f'''
                 <hr style="margin: 25px 0px 10px 0px; border: none; border-top: 1px solid #ddd;">
-                <h5 style="margin-top: 0px; margin-bottom: 10px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:6px; font-size: 20px;">light_mode</span>휴일 시간외근무 상신 ({view_saturday_str})</h5>
+                <h5 style="margin-top: 0px; margin-bottom: 10px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:6px; font-size: 24px;">light_mode</span>휴일 시간외근무 상신 ({view_saturday_str})</h5>
             ''', unsafe_allow_html=True)
             is_past_holiday = (view_saturday_date < today_date)
             render_copyable_table(records_holiday_view, "휴일", view_saturday_str, st.session_state.current_user, is_past_holiday)
