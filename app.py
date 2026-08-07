@@ -188,7 +188,7 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
         .copy-btn:hover {{ background-color: #1b489d; }}
         
         .link-btn {{ background-color: #1b489d; }}
-        .link-btn:hover {{ background-color: #ea580c; }}
+        .link-btn:hover {{ background-color: #16a34a; }}
     </style>
     </head>
     <body>
@@ -254,7 +254,7 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
             
             setTimeout(function() {{
                 btn.innerText = originalText;
-                btn.style.backgroundColor = "#3b82f6";
+                btn.style.backgroundColor = "#1b489d";
             }}, 2000);
         }}
         </script>
