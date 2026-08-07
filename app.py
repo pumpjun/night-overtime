@@ -1,12 +1,11 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime, timedelta, timezone
-import io
-import openpyxl
-import os
 import json
 import gspread
 from google.oauth2.service_account import Credentials
+import random
 
 # --- 0. 사용자 및 관리자 정의, 비밀번호 세팅 ---
 members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이"]
@@ -103,6 +102,150 @@ custom_css = """
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
+# ⭐️ 매일 바뀌는 일일 예외 암호 생성 함수 (날짜를 시드로 사용하여 하루종일 고정된 랜덤값 생성)
+def get_daily_password(date_str):
+    random.seed(date_str + "_TS_TEAM_SECRET")
+    pw = str(random.randint(1000, 9999))
+    random.seed() # 다른 랜덤 기능에 영향을 주지 않도록 시드 초기화
+    return pw
+
+# ⭐️ 하이웍스 최적화 폰트 사이즈 반영 함수
+def render_copyable_table(records, work_type, date_str, current_user):
+    if not records:
+        st.info("해당 날짜에 등록된 근무자가 없습니다.")
+        return
+        
+    font_family = "'맑은 고딕', 'Malgun Gothic', '돋움', Dotum, sans-serif"
+    
+    title_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 16px; font-weight: normal; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 10px;"
+    red_alert_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 9pt; font-weight: bold; color: #FF0000; background-color: #ffffff; text-align: left; vertical-align: middle; padding: 6px; line-height: 1.4;"
+    bold_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 11pt; font-weight: bold; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
+    normal_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 11pt; font-weight: normal; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
+    
+    rows_html = ""
+    for idx, (name, end_t, reason) in enumerate(records, start=1):
+        time_str = f"17:30 ~ {end_t}" if work_type == "야간" else f"08:00 ~ {end_t}"
+        rows_html += f"""
+        <tr>
+            <td style="{normal_style}">{idx}</td>
+            <td colspan="2" style="{normal_style}">{name}</td>
+            <td style="{normal_style}">{time_str}</td>
+            <td style="{normal_style} text-align: left;">{reason}</td>
+            <td style="{normal_style}"></td>
+            <td style="{normal_style}"></td>
+        </tr>
+        """
+    
+    hiworks_url = "https://approval.office.hiworks.com/ohyoung.net/approval/document/write"
+    
+    html_string = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        body {{ margin: 0; padding: 0; font-family: {font_family}; }}
+        .btn-container {{ 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 10px; 
+        }}
+        .copy-btn, .link-btn {{
+            flex: 1; 
+            padding: 12px; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 15px; 
+            cursor: pointer; 
+            font-weight: bold;
+            text-align: center;
+            text-decoration: none;
+            transition: background-color 0.3s; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: inline-block;
+            box-sizing: border-box;
+        }}
+        .copy-btn {{ background-color: #3b82f6; }}
+        .copy-btn:hover {{ background-color: #2563eb; }}
+        
+        .link-btn {{ background-color: #f97316; }}
+        .link-btn:hover {{ background-color: #ea580c; }}
+    </style>
+    </head>
+    <body>
+        <div class="btn-container">
+            <button class="copy-btn" onclick="copyTable()">📋 하이웍스 표 복사하기 (Ctrl+A 덮어쓰기)</button>
+            <a href="{hiworks_url}" target="_blank" class="link-btn">🔗 하이웍스 결재창 열기</a>
+        </div>
+        <div id="table-container">
+            <table style="border-collapse: collapse; width: 100%;">
+                <tbody>
+                    <tr>
+                        <td colspan="7" style="{title_style}">시간외근무</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" rowspan="2" style="{bold_style}">소속부서</td>
+                        <td rowspan="2" style="{normal_style}">T/S TEAM</td>
+                        <td rowspan="2" style="{bold_style}">근무일</td>
+                        <td rowspan="2" style="{normal_style}">{date_str}</td>
+                        <td rowspan="2" style="{bold_style}">기안자</td>
+                        <td rowspan="2" style="{normal_style}">{current_user}</td>
+                    </tr>
+                    <tr></tr>
+                    <tr>
+                        <td colspan="7" style="{red_alert_style}">
+                            ※ 근무일: YYYY-MM-DD 형식 | HR: 숫자만 입력 (예: 2, 3.5) | 실근무시간: HH:MM~HH:MM 형식<br>
+                            ※ 신청시간, 실근무시간, HR&nbsp;&nbsp;&nbsp;따옴표 " " 사용금지
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="{bold_style} width: 5%;">No.</td>
+                        <td colspan="2" style="{bold_style} width: 15%;">성명</td>
+                        <td style="{bold_style} width: 20%;">신청시간</td>
+                        <td style="{bold_style} width: 30%;">근무사유</td>
+                        <td style="{bold_style} width: 20%;">실근무시간</td>
+                        <td style="{bold_style} width: 10%;">HR</td>
+                    </tr>
+                    {rows_html}
+                </tbody>
+            </table>
+        </div>
+        
+        <script>
+        function copyTable() {{
+            var el = document.getElementById("table-container");
+            var range = document.createRange();
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            try {{
+                range.selectNodeContents(el);
+                sel.addRange(range);
+            }} catch (e) {{
+                range.selectNode(el);
+                sel.addRange(range);
+            }}
+            document.execCommand("copy");
+            sel.removeAllRanges();
+            
+            var btn = document.querySelector(".copy-btn");
+            var originalText = btn.innerText;
+            
+            btn.innerText = "✅ 복사 완료!";
+            btn.style.backgroundColor = "#16a34a";
+            
+            setTimeout(function() {{
+                btn.innerText = originalText;
+                btn.style.backgroundColor = "#3b82f6";
+            }}, 2000);
+        }}
+        </script>
+    </body>
+    </html>
+    """
+    height = 300 + (len(records) * 35) 
+    components.html(html_string, height=height, scrolling=True)
+
+
 # --- 1. 세션 상태 관리 (로그인 처리) ---
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "current_user" not in st.session_state: st.session_state.current_user = None
@@ -140,11 +283,8 @@ if not st.session_state.logged_in:
         st.write("")
         st.markdown(f"**현재 선택됨:** `{st.session_state.login_selected_user}`")
         
-        # st.form을 사용하여 묶어주면 텍스트 창에서 엔터(Enter) 시 자동으로 실행됩니다.
         with st.form("login_form", border=False):
             pin_input = st.text_input("🔑 비밀번호", type="password", placeholder="비밀번호 4자리 입력")
-            
-            # st.button 대신 st.form_submit_button으로 변경
             submitted = st.form_submit_button("🚀 로그인", type="primary", use_container_width=True)
             
             if submitted:
@@ -222,6 +362,10 @@ with col1:
     
     if st.session_state.current_user in admins:
         st.info("💡 관리자 권한: '휴일근무'만 등록할 수 있습니다.")
+        # ⭐️ 관리자 전용: 오늘의 야간 예외 등록 암호 표시
+        daily_pw = get_daily_password(today_str)
+        st.warning(f"🔑 [관리자 전용] 오늘({today_str})의 야간 지각자 예외 암호: **{daily_pw}**")
+        
         tabs = st.tabs(["☀️ 휴일근무"])
         tab_holiday = tabs[0]
         has_night_tab = False
@@ -232,12 +376,24 @@ with col1:
     
     if has_night_tab:
         with tab_night:
-            # ⭐️ 변경: 금일 12:00 마감 타이머 로직
             deadline_time = current_time.replace(hour=12, minute=0, second=0, microsecond=0)
             is_past_deadline = current_time >= deadline_time
+            form_disabled = False
             
             if is_past_deadline:
+                daily_pw = get_daily_password(today_str)
                 st.error("⚠️ 금일 야간근무 등록 및 수정이 마감되었습니다. (12:00 마감)")
+                
+                # ⭐️ 지각자용 예외 암호 입력칸 생성
+                override_input = st.text_input("🔑 지각자 예외 등록 암호 (관리자에게 문의)", type="password", key="override_pw")
+                
+                if override_input == daily_pw:
+                    st.success("✅ 예외 암호 확인! 등록 및 수정이 가능합니다.")
+                    form_disabled = False # 암호 일치 시 잠금 해제
+                else:
+                    if override_input:
+                        st.error("❌ 암호가 일치하지 않습니다.")
+                    form_disabled = True # 기본 잠금 상태
             else:
                 time_diff = deadline_time - current_time
                 hours, remainder = divmod(time_diff.seconds, 3600)
@@ -250,19 +406,17 @@ with col1:
                 st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
                 for t_slot in night_time_slots:
                     btn_type = "primary" if t_slot == st.session_state.night_end_time else "secondary"
-                    # 마감 시간이 지났으면 시간 선택 버튼도 비활성화 처리
-                    if st.button(t_slot, key=f"n_{t_slot}", use_container_width=True, type=btn_type, disabled=is_past_deadline):
+                    # ⭐️ 12시가 지났어도 암호를 맞췄다면 버튼 활성화
+                    if st.button(t_slot, key=f"n_{t_slot}", use_container_width=True, type=btn_type, disabled=form_disabled):
                         st.session_state.night_end_time = t_slot
                         st.rerun()
                         
             st.markdown("**2. 근무 사유를 입력하세요**")
-            st.text_input("사유 입력", key="night_reason", label_visibility="collapsed", placeholder="예: B/T 3건 및 견뢰도 Test", disabled=is_past_deadline)
+            st.text_input("사유 입력", key="night_reason", label_visibility="collapsed", placeholder="예: B/T 3건 및 견뢰도 Test", disabled=form_disabled)
 
             with st.container():
                 st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
-                
-                # ⭐️ 버튼들에 disabled=is_past_deadline 속성 추가
-                if st.button(f"🚀 야간 등록/수정", key="n_reg", type="primary", use_container_width=True, disabled=is_past_deadline):
+                if st.button(f"🚀 야간 등록/수정", key="n_reg", type="primary", use_container_width=True, disabled=form_disabled):
                     if not st.session_state.night_reason.strip():
                         st.error("⚠️ 근무 사유를 반드시 적어주세요!")
                     else:
@@ -284,7 +438,7 @@ with col1:
                             st.success(f"🎉 야간근무 등록 완료!")
                         st.rerun()
                     
-                if st.button(f"🗑️ 야간 취소", key="n_del", type="secondary", use_container_width=True, disabled=is_past_deadline):
+                if st.button(f"🗑️ 야간 취소", key="n_del", type="secondary", use_container_width=True, disabled=form_disabled):
                     all_data = sheet.get_all_values()
                     row_to_delete = -1
                     for i, row in enumerate(all_data):
@@ -398,41 +552,16 @@ with col2:
         html_code += '</tbody></table>'
         st.markdown(html_code, unsafe_allow_html=True)
         
-        template_path = "template.xlsx"
-        if os.path.exists(template_path):
-            wb = openpyxl.load_workbook(template_path)
-            ws = wb.active
-            
-            ws['F3'] = view_str
-            if st.session_state.current_user in admins:
-                ws['H3'] = st.session_state.current_user
-            
-            start_row = 8
-            for idx, (name, end_t, reason) in enumerate(records_night, start=1):
-                ws.cell(row=start_row, column=2, value=idx)                             
-                ws.cell(row=start_row, column=3, value=name)                            
-                ws.cell(row=start_row, column=5, value=f"17:30 ~ {end_t}")              
-                ws.cell(row=start_row, column=6, value=reason)                      
-                start_row += 1
-                
-            excel_buffer = io.BytesIO()
-            wb.save(excel_buffer)
-            excel_buffer.seek(0)
-            
-            # ⭐️ 변경: 관리자 양식 다운로드 12:10 제한 로직
+        # ⭐️ 관리자에게만 복사 표와 12:10 버튼 활성화 노출
+        if st.session_state.current_user in admins:
             is_viewing_today = (view_date == today_date)
             download_avail_time = current_time.replace(hour=12, minute=10, second=0, microsecond=0)
             
             if is_viewing_today and current_time < download_avail_time:
-                st.warning("⚠️ 금일 야간 양식 다운로드는 **12:10분 이후**부터 가능합니다.")
+                st.warning("⚠️ 금일 야간 전자결재 상신(복사)은 **12:10분 이후**부터 가능합니다.")
             else:
-                st.download_button(
-                    label=f"📥 {view_str} 야간 양식 다운로드",
-                    data=excel_buffer.getvalue(),
-                    file_name=f"야근계획서_{view_str}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
+                st.markdown("##### 📥 결재 상신용 데이터")
+                render_copyable_table(records_night, "야간", view_str, st.session_state.current_user)
 
     # === 탭 2: 휴일근무 현황 ===
     with tab2:
@@ -465,33 +594,10 @@ with col2:
         html_code_h += '</tbody></table>'
         st.markdown(html_code_h, unsafe_allow_html=True)
         
-        if os.path.exists(template_path):
-            wb_h = openpyxl.load_workbook(template_path)
-            ws_h = wb_h.active
-            
-            ws_h['F3'] = view_saturday_str
-            if st.session_state.current_user in admins:
-                ws_h['H3'] = st.session_state.current_user
-            
-            start_row = 8
-            for idx, (name, end_t, reason) in enumerate(records_holiday, start=1):
-                ws_h.cell(row=start_row, column=2, value=idx)                             
-                ws_h.cell(row=start_row, column=3, value=name)                            
-                ws_h.cell(row=start_row, column=5, value=f"08:00 ~ {end_t}")              
-                ws_h.cell(row=start_row, column=6, value=reason)                      
-                start_row += 1
-                
-            excel_buffer_h = io.BytesIO()
-            wb_h.save(excel_buffer_h)
-            excel_buffer_h.seek(0)
-            
-            st.download_button(
-                label=f"📥 {view_saturday_str} 휴일 양식 다운로드",
-                data=excel_buffer_h.getvalue(),
-                file_name=f"휴일근무서_{view_saturday_str}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
+        # ⭐️ 관리자에게만 복사 표 노출
+        if st.session_state.current_user in admins:
+            st.markdown("##### 📥 결재 상신용 데이터")
+            render_copyable_table(records_holiday, "휴일", view_saturday_str, st.session_state.current_user)
 
     # === 탭 3: 요일별 8주 달력 ===
     with tab3:
