@@ -184,16 +184,16 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
             display: inline-block;
             box-sizing: border-box;
         }}
-        .copy-btn {{ background-color: #3b82f6; }}
+        .copy-btn {{ background-color: #1b489d; }}
         .copy-btn:hover {{ background-color: #2563eb; }}
         
-        .link-btn {{ background-color: #f97316; }}
+        .link-btn {{ background-color: #1b489d; }}
         .link-btn:hover {{ background-color: #ea580c; }}
     </style>
     </head>
     <body>
         <div class="btn-container">
-            <button class="copy-btn" onclick="copyTable()">📋 하이웍스 표 복사하기 (Ctrl+A 덮어쓰기)</button>
+            <button class="copy-btn" onclick="copyTable()">📋 표 복사하기</button>
             <a href="{hiworks_url}" target="_blank" class="link-btn">🔗 하이웍스 결재창 열기</a>
         </div>
         <div id="table-container">
