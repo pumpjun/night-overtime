@@ -354,7 +354,6 @@ def init_connection():
     return client.open_by_url(sheet_url).sheet1
 
 sheet = init_connection()
-
 all_data = sheet.get_all_values()
 
 def get_work_type(row):
@@ -374,20 +373,32 @@ if "holiday_reason" not in st.session_state: st.session_state.holiday_reason = "
 
 
 # --- 5. 화면 레이아웃 분할 ---
-# ⭐️ 좌/우 화면이 같은 그리드 안에서 시작되도록 공백(빈 Row) 제거
+# ⭐️ 좌/우 화면이 같은 그리드 안에서 완벽하게 시작되도록 통합
 col1, col2 = st.columns([1, 1.5])
 
-# 우측 화면(col2)을 먼저 렌더링하여 날짜 변수를 확보합니다.
+# ⭐️ 공통 뱃지(Badge) 색상 세팅
+try:
+    theme_primary = st.get_option("theme.primaryColor")
+    if not theme_primary:
+        theme_primary = "#ff4b4b" 
+except:
+    theme_primary = "#ff4b4b"
+    
+badge_style = f"background-color: {theme_primary}; color: white; border: 1px solid {theme_primary}; border-radius: 6px; padding: 3px 12px; font-size: 15px; font-weight: normal; margin-left: 8px;"
+
+
+# ⭐️ 1. 우측 화면(col2) 먼저 선언: 날짜 변수 확보
 with col2:
     view_date = st.date_input("🗓️ 조회 및 상신 기준 날짜 선택", today_date)
     view_str = view_date.strftime('%Y-%m-%d')
     view_saturday_date = view_date + timedelta(days=(5 - view_date.weekday()))
     view_saturday_str = view_saturday_date.strftime('%Y-%m-%d')
 
-# 이어서 좌측 화면(col1)을 렌더링합니다. (이제 날짜 입력기와 같은 높이에서 나란히 시작됩니다)
+# ⭐️ 2. 좌측 화면(col1) 선언: 결재 상신 / 계획 등록 (이제 우측 날짜 선택기와 정확히 같은 높이에서 렌더링 시작)
 with col1:
     if st.session_state.current_user in admins:
-        st.markdown('<h4 style="margin-top: 5px; margin-bottom: 10px;">📥 결재 상신 데이터</h4>', unsafe_allow_html=True)
+        # 관리자 화면 제목 (마진 최소화)
+        st.markdown(f'<h4 style="margin-top: 0px; margin-bottom: 15px; display: flex; align-items: center;">📥 결재 상신 데이터 <span style="{badge_style}">{st.session_state.current_user}</span></h4>', unsafe_allow_html=True)
         
         daily_pw = get_daily_password(today_str)
         st.info(f"🔑 오늘({today_str})의 지각자 예외 암호: **{daily_pw}** (직원 문의 시 안내)")
@@ -419,10 +430,8 @@ with col1:
             render_copyable_table(records_night, "야간", view_str, st.session_state.current_user, is_past)
 
     else:
-        # ⭐️ config.toml에 지정된 기본 색상(Primary Color)을 자동으로 따라가는 CSS 뱃지 적용
-        badge_style = "background-color: var(--primary-color, #ff4b4b); color: white; border: 1px solid var(--primary-color, #ff4b4b); border-radius: 6px; padding: 3px 12px; font-size: 15px; font-weight: normal; margin-left: 8px;"
-        
-        st.markdown(f'<h4 style="margin-top: 5px; margin-bottom: 15px; display: flex; align-items: center;">📝 계획 등록 <span style="{badge_style}">{st.session_state.current_user}</span></h4>', unsafe_allow_html=True)
+        # 일반 사용자 화면 제목 (마진 최소화)
+        st.markdown(f'<h4 style="margin-top: 0px; margin-bottom: 15px; display: flex; align-items: center;">📝 계획 등록 <span style="{badge_style}">{st.session_state.current_user}</span></h4>', unsafe_allow_html=True)
         
         tabs = st.tabs(["🌙 야간근무", "☀️ 휴일근무"])
         tab_night, tab_holiday = tabs[0], tabs[1]
@@ -552,7 +561,7 @@ with col1:
                         st.info(f"ℹ️ 기록 없음")
                     st.rerun()
 
-# --- 오른쪽 영역: 탭(Tab) 기반 현황판 (col2 마저 이어가기) ---
+# ⭐️ 3. 다시 우측 화면(col2) 선언: 하단 현황판 및 달력 렌더링
 with col2:
     if st.session_state.current_user in admins:
         tab1, tab2, tab3 = st.tabs(["🌙 야간 현황", "☀️ 휴일 현황", "📅 8주 달력 조회"])
