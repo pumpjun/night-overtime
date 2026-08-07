@@ -109,8 +109,8 @@ def get_daily_password(date_str):
     random.seed() # 다른 랜덤 기능에 영향을 주지 않도록 시드 초기화
     return pw
 
-# ⭐️ 하이웍스 최적화 폰트 사이즈 반영 함수
-def render_copyable_table(records, work_type, date_str, current_user):
+# ⭐️ 하이웍스 최적화 폰트 사이즈 반영 및 과거기록 HR 자동계산 함수
+def render_copyable_table(records, work_type, date_str, current_user, is_past_record=False):
     if not records:
         st.info("해당 날짜에 등록된 근무자가 없습니다.")
         return
@@ -125,14 +125,33 @@ def render_copyable_table(records, work_type, date_str, current_user):
     rows_html = ""
     for idx, (name, end_t, reason) in enumerate(records, start=1):
         time_str = f"17:30 ~ {end_t}" if work_type == "야간" else f"08:00 ~ {end_t}"
+        
+        # 사후 결재(과거 기록)일 경우 실근무시간과 HR 자동 계산
+        actual_time_str = ""
+        hr_str = ""
+        
+        if is_past_record:
+            actual_time_str = time_str
+            try:
+                start_t = "17:30" if work_type == "야간" else "08:00"
+                t1 = datetime.strptime(start_t, "%H:%M")
+                t2 = datetime.strptime(end_t, "%H:%M")
+                hr = (t2 - t1).total_seconds() / 3600.0
+                # 휴일근무 12시 이후 종료 시 점심시간 1시간 공제
+                if work_type == "휴일" and t2 > datetime.strptime("12:00", "%H:%M"):
+                    hr -= 1.0
+                hr_str = f"{hr:g}" # 4.0 -> 4, 4.5 -> 4.5 형태로 변환
+            except ValueError:
+                hr_str = ""
+        
         rows_html += f"""
         <tr>
             <td style="{normal_style}">{idx}</td>
             <td colspan="2" style="{normal_style}">{name}</td>
             <td style="{normal_style}">{time_str}</td>
             <td style="{normal_style} text-align: left;">{reason}</td>
-            <td style="{normal_style}"></td>
-            <td style="{normal_style}"></td>
+            <td style="{normal_style}">{actual_time_str}</td>
+            <td style="{normal_style}">{hr_str}</td>
         </tr>
         """
     
@@ -561,7 +580,9 @@ with col2:
                 st.warning("⚠️ 금일 야간 전자결재 상신(복사)은 **12:10분 이후**부터 가능합니다.")
             else:
                 st.markdown("##### 📥 결재 상신용 데이터")
-                render_copyable_table(records_night, "야간", view_str, st.session_state.current_user)
+                # ⭐️ 과거(어제 등) 날짜를 조회할 때만 HR과 실근무시간 자동 생성
+                is_past = (view_date < today_date)
+                render_copyable_table(records_night, "야간", view_str, st.session_state.current_user, is_past)
 
     # === 탭 2: 휴일근무 현황 ===
     with tab2:
@@ -597,7 +618,8 @@ with col2:
         # ⭐️ 관리자에게만 복사 표 노출
         if st.session_state.current_user in admins:
             st.markdown("##### 📥 결재 상신용 데이터")
-            render_copyable_table(records_holiday, "휴일", view_saturday_str, st.session_state.current_user)
+            is_past_holiday = (view_saturday_date < today_date)
+            render_copyable_table(records_holiday, "휴일", view_saturday_str, st.session_state.current_user, is_past_holiday)
 
     # === 탭 3: 요일별 8주 달력 ===
     with tab3:
