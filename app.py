@@ -16,16 +16,16 @@ HOLIDAY_USERS = admins + members
 
 USER_PINS = {user: "5050" for user in ALL_USERS}
 
-# 모바일/PC 넓게 쓰기 설정 및 사이드바 기본 숨김
+# 모바일/PC 넓게 쓰기 설정 및 사이드바 기본 숨김 (이모티콘 제거)
 st.set_page_config(
     page_title="T/S 근무 관리",       
-    page_icon="🏢",                 
     layout="wide", 
     initial_sidebar_state="collapsed" 
 )
 
-# ⭐️ CSS 스타일 전역 주입
+# ⭐️ CSS 스타일 전역 주입 (Material Icons 폰트 로드 포함)
 custom_css = """
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
 <style>
     /* 1. 기본 UI 요소 및 상단 헤더 완전 숨기기 */
     [data-testid="stToolbar"], [data-testid="stAppDeployButton"], 
@@ -112,7 +112,7 @@ def get_daily_password(date_str):
 # ⭐️ 하이웍스 최적화 폰트 사이즈 반영 및 과거기록 HR 자동계산 함수
 def render_copyable_table(records, work_type, date_str, current_user, is_past_record=False):
     if not records:
-        st.info("해당 날짜에 등록된 근무자가 없습니다.")
+        st.info("해당 날짜에 등록된 근무자가 없습니다.", icon=":material/info:")
         return
         
     font_family = "'맑은 고딕', 'Malgun Gothic', '돋움', Dotum, sans-serif"
@@ -159,6 +159,7 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
     <!DOCTYPE html>
     <html>
     <head>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
         body {{ margin: 0; padding: 0; font-family: {font_family}; }}
         .btn-container {{ 
@@ -179,7 +180,10 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
             text-decoration: none;
             transition: background-color 0.3s; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: inline-block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
             box-sizing: border-box;
         }}
         .copy-btn {{ background-color: #1b489d; }}
@@ -191,8 +195,14 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
     </head>
     <body>
         <div class="btn-container">
-            <button class="copy-btn" onclick="copyTable()">📋 표 복사하기</button>
-            <a href="{hiworks_url}" target="_blank" class="link-btn">🔗 하이웍스 결재창 열기</a>
+            <button class="copy-btn" onclick="copyTable()">
+                <span class="material-symbols-outlined" style="font-size: 18px;">content_copy</span>
+                <span id="btn-text">표 복사하기</span>
+            </button>
+            <a href="{hiworks_url}" target="_blank" class="link-btn">
+                <span class="material-symbols-outlined" style="font-size: 18px;">open_in_new</span>
+                하이웍스 결재창 열기
+            </a>
         </div>
         <div id="table-container">
             <table style="border-collapse: collapse; width: 100%;">
@@ -245,13 +255,18 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
             sel.removeAllRanges();
             
             var btn = document.querySelector(".copy-btn");
-            var originalText = btn.innerText;
+            var btnText = document.getElementById("btn-text");
+            var icon = btn.querySelector('.material-symbols-outlined');
             
-            btn.innerText = "✅ 복사 완료!";
+            var originalText = btnText.innerText;
+            
+            icon.innerText = "check_circle";
+            btnText.innerText = "복사 완료!";
             btn.style.backgroundColor = "#16a34a";
             
             setTimeout(function() {{
-                btn.innerText = originalText;
+                icon.innerText = "content_copy";
+                btnText.innerText = originalText;
                 btn.style.backgroundColor = "#1b489d";
             }}, 2000);
         }}
@@ -270,15 +285,18 @@ if "login_selected_user" not in st.session_state: st.session_state.login_selecte
 
 # 🔒 로그인 화면
 if not st.session_state.logged_in:
-    st.markdown("## 🏢 T/S 근무 계획 관리 시스템")
-    st.caption("✨ Created by tskwon")
+    st.markdown(
+        "## <span class='material-symbols-outlined' style='font-size:32px; vertical-align:middle; margin-right:8px;'>domain</span>T/S 근무 계획 관리 시스템", 
+        unsafe_allow_html=True
+    )
+    st.caption("Created by tskwon :material/science:")
     
     _, col_login, _ = st.columns([1, 1.5, 1])
     with col_login:
         st.write("")
-        st.markdown("### 🔐 시스템 로그인")
+        st.markdown("### <span class='material-symbols-outlined' style='vertical-align:middle; margin-right:6px;'>lock</span>시스템 로그인", unsafe_allow_html=True)
         
-        st.markdown("##### 🧑‍💻 야근인원")
+        st.markdown("##### <span class='material-symbols-outlined' style='vertical-align:middle; margin-right:6px;'>person</span>야근인원", unsafe_allow_html=True)
         with st.container():
             st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
             for user in members:
@@ -288,7 +306,7 @@ if not st.session_state.logged_in:
                     st.rerun()
                     
         st.write("")
-        st.markdown("##### 👑 관리자")
+        st.markdown("##### <span class='material-symbols-outlined' style='vertical-align:middle; margin-right:6px;'>shield_person</span>관리자", unsafe_allow_html=True)
         with st.container():
             st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
             for user in admins:
@@ -301,8 +319,8 @@ if not st.session_state.logged_in:
         st.markdown(f"**현재 선택됨:** `{st.session_state.login_selected_user}`")
         
         with st.form("login_form", border=False):
-            pin_input = st.text_input("🔑 비밀번호", type="password", placeholder="비밀번호 4자리 입력")
-            submitted = st.form_submit_button("🚀 로그인", type="primary", use_container_width=True)
+            pin_input = st.text_input("비밀번호", type="password", placeholder="비밀번호 4자리 입력")
+            submitted = st.form_submit_button("로그인", type="primary", use_container_width=True, icon=":material/login:")
             
             if submitted:
                 if USER_PINS.get(st.session_state.login_selected_user) == pin_input:
@@ -310,7 +328,7 @@ if not st.session_state.logged_in:
                     st.session_state.current_user = st.session_state.login_selected_user
                     st.rerun()
                 else:
-                    st.error("⚠️ 비밀번호가 일치하지 않습니다.")
+                    st.error("비밀번호가 일치하지 않습니다.", icon=":material/error:")
     st.stop() 
 
 # =====================================================================
@@ -319,10 +337,13 @@ if not st.session_state.logged_in:
 
 top_col1, top_col2 = st.columns([4, 1])
 with top_col1:
-    st.markdown("## 🏢 T/S 근무 계획 관리 시스템") 
-    st.caption("✨ Created by tskwon")
+    st.markdown(
+        "## <span class='material-symbols-outlined' style='font-size:32px; vertical-align:middle; margin-right:8px;'>domain</span>T/S 근무 계획 관리 시스템", 
+        unsafe_allow_html=True
+    ) 
+    st.caption("Created by tskwon :material/science:")
 with top_col2:
-    if st.button("🚪 로그아웃", use_container_width=True):
+    if st.button("로그아웃", use_container_width=True, icon=":material/logout:"):
         st.session_state.logged_in = False
         st.session_state.current_user = None
         st.rerun()
@@ -373,10 +394,9 @@ if "holiday_reason" not in st.session_state: st.session_state.holiday_reason = "
 
 
 # --- 5. 화면 레이아웃 분할 ---
-# ⭐️ 좌/우 화면이 같은 그리드 안에서 완벽하게 시작되도록 통합
 col1, col2 = st.columns([1, 1.5])
 
-# ⭐️ 공통 뱃지(Badge) 색상 세팅
+# 공통 뱃지(Badge) 색상 세팅
 try:
     theme_primary = st.get_option("theme.primaryColor")
     if not theme_primary:
@@ -389,23 +409,22 @@ badge_style = f"background-color: {theme_primary}; color: white; border: 1px sol
 
 # ⭐️ 1. 우측 화면(col2) 먼저 선언: 날짜 변수 확보
 with col2:
-    view_date = st.date_input("🗓️ 조회 및 상신 기준 날짜 선택", today_date)
+    view_date = st.date_input("조회 및 상신 기준 날짜 선택", today_date)
     view_str = view_date.strftime('%Y-%m-%d')
     view_saturday_date = view_date + timedelta(days=(5 - view_date.weekday()))
     view_saturday_str = view_saturday_date.strftime('%Y-%m-%d')
 
-# ⭐️ 2. 좌측 화면(col1) 선언: 결재 상신 / 계획 등록 (이제 우측 날짜 선택기와 정확히 같은 높이에서 렌더링 시작)
+# ⭐️ 2. 좌측 화면(col1) 선언: 결재 상신 / 계획 등록
 with col1:
     if st.session_state.current_user in admins:
-        # 관리자 화면 제목 (마진 최소화)
-        st.markdown(f'<h4 style="margin-top: 0px; margin-bottom: 15px; display: flex; align-items: center;">📥 결재 상신 데이터 <span style="{badge_style}">{st.session_state.current_user}</span></h4>', unsafe_allow_html=True)
+        st.markdown(f'<h4 style="margin-top: 0px; margin-bottom: 15px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:8px;">inbox</span>결재 상신 데이터 <span style="{badge_style}">{st.session_state.current_user}</span></h4>', unsafe_allow_html=True)
         
         daily_pw = get_daily_password(today_str)
-        st.info(f"🔑 오늘({today_str})의 지각자 예외 암호: **{daily_pw}** (직원 문의 시 안내)")
+        st.info(f"오늘({today_str})의 지각자 예외 암호: **{daily_pw}** (직원 문의 시 안내)", icon=":material/key:")
         
         st.markdown(f'''
             <hr style="margin: 15px 0px 10px 0px; border: none; border-top: 1px solid #ddd;">
-            <h5 style="margin-top: 0px; margin-bottom: 10px;">🌙 야간 시간외근무 상신 ({view_str})</h5>
+            <h5 style="margin-top: 0px; margin-bottom: 10px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:6px; font-size: 20px;">dark_mode</span>야간 시간외근무 상신 ({view_str})</h5>
         ''', unsafe_allow_html=True)
         
         records_night = []
@@ -424,16 +443,15 @@ with col1:
         download_avail_time = current_time.replace(hour=12, minute=10, second=0, microsecond=0)
         
         if is_viewing_today and current_time < download_avail_time:
-            st.warning("⚠️ 금일 야간 전자결재 상신(복사)은 **12:10분 이후**부터 활성화됩니다.")
+            st.warning("금일 야간 전자결재 상신(복사)은 **12:10분 이후**부터 활성화됩니다.", icon=":material/warning:")
         else:
             is_past = (view_date < today_date)
             render_copyable_table(records_night, "야간", view_str, st.session_state.current_user, is_past)
 
     else:
-        # 일반 사용자 화면 제목 (마진 최소화)
-        st.markdown(f'<h4 style="margin-top: 0px; margin-bottom: 15px; display: flex; align-items: center;">📝 계획 등록 <span style="{badge_style}">{st.session_state.current_user}</span></h4>', unsafe_allow_html=True)
+        st.markdown(f'<h4 style="margin-top: 0px; margin-bottom: 15px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:8px;">edit_document</span>계획 등록 <span style="{badge_style}">{st.session_state.current_user}</span></h4>', unsafe_allow_html=True)
         
-        tabs = st.tabs(["🌙 야간근무", "☀️ 휴일근무"])
+        tabs = st.tabs([":material/dark_mode: 야간근무", ":material/light_mode: 휴일근무"])
         tab_night, tab_holiday = tabs[0], tabs[1]
         
         with tab_night:
@@ -443,24 +461,24 @@ with col1:
             
             if is_past_deadline:
                 daily_pw = get_daily_password(today_str)
-                st.error("⚠️ 금일 야간근무 등록 및 수정이 마감되었습니다. (12:00 마감)")
+                st.error("금일 야간근무 등록 및 수정이 마감되었습니다. (12:00 마감)", icon=":material/error:")
                 
-                override_input = st.text_input("🔑 지각자 예외 등록 암호 (관리자에게 문의)", type="password", key="override_pw")
+                override_input = st.text_input("지각자 예외 등록 암호 (관리자에게 문의)", type="password", key="override_pw")
                 
                 if override_input == daily_pw:
-                    st.success("✅ 예외 암호 확인! 등록 및 수정이 가능합니다.")
+                    st.success("예외 암호 확인! 등록 및 수정이 가능합니다.", icon=":material/check_circle:")
                     form_disabled = False 
                 else:
                     if override_input:
-                        st.error("❌ 암호가 일치하지 않습니다.")
+                        st.error("암호가 일치하지 않습니다.", icon=":material/error:")
                     form_disabled = True 
             else:
                 time_diff = deadline_time - current_time
                 hours, remainder = divmod(time_diff.seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
-                st.info(f"⏳ 등록 마감까지 **{hours}시간 {minutes}분** 남았습니다. (12:00 마감)")
+                st.info(f"등록 마감까지 **{hours}시간 {minutes}분** 남았습니다. (12:00 마감)", icon=":material/hourglass_empty:")
             
-            st.caption(f"💡 오늘(**{today_str}**) 기준으로 야근이 등록됩니다.")
+            st.caption(f"오늘(**{today_str}**) 기준으로 야근이 등록됩니다.")
             st.markdown("**1. 종료 시간을 선택하세요**")
             with st.container():
                 st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
@@ -475,9 +493,9 @@ with col1:
 
             with st.container():
                 st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
-                if st.button(f"🚀 야간 등록/수정", key="n_reg", type="primary", use_container_width=True, disabled=form_disabled):
+                if st.button(f"야간 등록/수정", key="n_reg", type="primary", use_container_width=True, disabled=form_disabled, icon=":material/save:"):
                     if not st.session_state.night_reason.strip():
-                        st.error("⚠️ 근무 사유를 반드시 적어주세요!")
+                        st.error("근무 사유를 반드시 적어주세요!", icon=":material/warning:")
                     else:
                         row_to_update = -1
                         for i, row in enumerate(all_data):
@@ -489,14 +507,14 @@ with col1:
                             sheet.update_cell(row_to_update, 4, st.session_state.night_end_time) 
                             sheet.update_cell(row_to_update, 5, st.session_state.night_reason)
                             sheet.update_cell(row_to_update, 6, "야간") 
-                            st.success(f"🔄 야간근무 변경 완료!")
+                            st.success(f"야간근무 변경 완료!", icon=":material/sync:")
                         else:
                             new_id = len(all_data)
                             sheet.append_row([new_id, st.session_state.current_user, today_str, st.session_state.night_end_time, st.session_state.night_reason, "야간"])
-                            st.success(f"🎉 야간근무 등록 완료!")
+                            st.success(f"야간근무 등록 완료!", icon=":material/celebration:")
                         st.rerun()
                     
-                if st.button(f"🗑️ 야간 취소", key="n_del", type="secondary", use_container_width=True, disabled=form_disabled):
+                if st.button(f"야간 취소", key="n_del", type="secondary", use_container_width=True, disabled=form_disabled, icon=":material/delete:"):
                     row_to_delete = -1
                     for i, row in enumerate(all_data):
                         row_wt = get_work_type(row)
@@ -505,13 +523,13 @@ with col1:
                             break
                     if row_to_delete != -1:
                         sheet.delete_rows(row_to_delete)
-                        st.warning(f"🗑️ 야간근무 취소 완료!")
+                        st.warning(f"야간근무 취소 완료!", icon=":material/delete:")
                     else:
-                        st.info(f"ℹ️ 기록 없음")
+                        st.info(f"기록 없음", icon=":material/info:")
                     st.rerun()
 
         with tab_holiday:
-            st.caption(f"💡 이번 주 토요일(**{this_saturday_str}**) 기준으로 휴일근무가 등록됩니다.")
+            st.caption(f"이번 주 토요일(**{this_saturday_str}**) 기준으로 휴일근무가 등록됩니다.")
             st.markdown("**1. 종료 시간을 선택하세요**")
             with st.container():
                 st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
@@ -526,9 +544,9 @@ with col1:
 
             with st.container():
                 st.markdown('<style data-target="btn-grid"></style>', unsafe_allow_html=True)
-                if st.button(f"☀️ 휴일 등록/수정", key="h_reg", type="primary", use_container_width=True):
+                if st.button(f"휴일 등록/수정", key="h_reg", type="primary", use_container_width=True, icon=":material/save:"):
                     if not st.session_state.holiday_reason.strip():
-                        st.error("⚠️ 근무 사유를 반드시 적어주세요!")
+                        st.error("근무 사유를 반드시 적어주세요!", icon=":material/warning:")
                     else:
                         row_to_update = -1
                         for i, row in enumerate(all_data):
@@ -540,14 +558,14 @@ with col1:
                             sheet.update_cell(row_to_update, 4, st.session_state.holiday_end_time) 
                             sheet.update_cell(row_to_update, 5, st.session_state.holiday_reason)
                             sheet.update_cell(row_to_update, 6, "휴일") 
-                            st.success(f"🔄 휴일근무 변경 완료!")
+                            st.success(f"휴일근무 변경 완료!", icon=":material/sync:")
                         else:
                             new_id = len(all_data)
                             sheet.append_row([new_id, st.session_state.current_user, this_saturday_str, st.session_state.holiday_end_time, st.session_state.holiday_reason, "휴일"])
-                            st.success(f"🎉 휴일근무 등록 완료!")
+                            st.success(f"휴일근무 등록 완료!", icon=":material/celebration:")
                         st.rerun()
                     
-                if st.button(f"🗑️ 휴일 취소", key="h_del", type="secondary", use_container_width=True):
+                if st.button(f"휴일 취소", key="h_del", type="secondary", use_container_width=True, icon=":material/delete:"):
                     row_to_delete = -1
                     for i, row in enumerate(all_data):
                         row_wt = get_work_type(row)
@@ -556,17 +574,17 @@ with col1:
                             break
                     if row_to_delete != -1:
                         sheet.delete_rows(row_to_delete)
-                        st.warning(f"🗑️ 휴일근무 취소 완료!")
+                        st.warning(f"휴일근무 취소 완료!", icon=":material/delete:")
                     else:
-                        st.info(f"ℹ️ 기록 없음")
+                        st.info(f"기록 없음", icon=":material/info:")
                     st.rerun()
 
 # ⭐️ 3. 다시 우측 화면(col2) 선언: 하단 현황판 및 달력 렌더링
 with col2:
     if st.session_state.current_user in admins:
-        tab1, tab2, tab3 = st.tabs(["🌙 야간 현황", "☀️ 휴일 현황", "📅 8주 달력 조회"])
+        tab1, tab2, tab3 = st.tabs([":material/dark_mode: 야간 현황", ":material/light_mode: 휴일 현황", ":material/calendar_month: 8주 달력 조회"])
     else:
-        tab1, tab2, tab3 = st.tabs(["🌙 야간 현황", "☀️ 휴일 현황", "📅 나의 8주 달력"])
+        tab1, tab2, tab3 = st.tabs([":material/dark_mode: 야간 현황", ":material/light_mode: 휴일 현황", ":material/calendar_month: 나의 8주 달력"])
     
     # === 탭 1: 야간근무 현황 ===
     with tab1:
@@ -586,7 +604,7 @@ with col2:
         
         for name, end_t, reason in records_night_view:
             if end_t in grid_df.index and name in grid_df.columns:
-                grid_df.loc[end_t, name] = "✔️ 야근"
+                grid_df.loc[end_t, name] = "야근"
                     
         html_code = f'<table class="custom-overtime-table"><thead><tr><th>시간</th>'
         for col in grid_df.columns: html_code += f'<th>{col}</th>'
@@ -594,7 +612,7 @@ with col2:
         for index, row in grid_df.iterrows():
             html_code += f'<tr><th>{index}</th>'
             for val in row:
-                html_code += f'<td class="overtime-checked">{val}</td>' if val == "✔️ 야근" else f'<td>{val}</td>'
+                html_code += f'<td class="overtime-checked">{val}</td>' if val == "야근" else f'<td>{val}</td>'
             html_code += '</tr>'
         html_code += '</tbody></table>'
         st.markdown(html_code, unsafe_allow_html=True)
@@ -617,7 +635,7 @@ with col2:
         
         for name, end_t, reason in records_holiday_view:
             if end_t in grid_df_holiday.index and name in grid_df_holiday.columns:
-                grid_df_holiday.loc[end_t, name] = "✔️ 휴일"
+                grid_df_holiday.loc[end_t, name] = "휴일"
                     
         html_code_h = f'<table class="custom-overtime-table"><thead><tr><th>시간</th>'
         for col in grid_df_holiday.columns: html_code_h += f'<th>{col}</th>'
@@ -625,7 +643,7 @@ with col2:
         for index, row in grid_df_holiday.iterrows():
             html_code_h += f'<tr><th>{index}</th>'
             for val in row:
-                html_code_h += f'<td class="overtime-checked">{val}</td>' if val == "✔️ 휴일" else f'<td>{val}</td>'
+                html_code_h += f'<td class="overtime-checked">{val}</td>' if val == "휴일" else f'<td>{val}</td>'
             html_code_h += '</tr>'
         html_code_h += '</tbody></table>'
         st.markdown(html_code_h, unsafe_allow_html=True)
@@ -633,7 +651,7 @@ with col2:
         if st.session_state.current_user in admins:
             st.markdown(f'''
                 <hr style="margin: 25px 0px 10px 0px; border: none; border-top: 1px solid #ddd;">
-                <h5 style="margin-top: 0px; margin-bottom: 10px;">☀️ 휴일 시간외근무 상신 ({view_saturday_str})</h5>
+                <h5 style="margin-top: 0px; margin-bottom: 10px; display: flex; align-items: center;"><span class="material-symbols-outlined" style="margin-right:6px; font-size: 20px;">light_mode</span>휴일 시간외근무 상신 ({view_saturday_str})</h5>
             ''', unsafe_allow_html=True)
             is_past_holiday = (view_saturday_date < today_date)
             render_copyable_table(records_holiday_view, "휴일", view_saturday_str, st.session_state.current_user, is_past_holiday)
@@ -666,9 +684,9 @@ with col2:
 
         if st.session_state.current_user in admins:
             default_index = HOLIDAY_USERS.index(st.session_state.current_user)
-            target_user = st.selectbox("📌 조회할 인원을 선택하세요", HOLIDAY_USERS, index=default_index)
+            target_user = st.selectbox("조회할 인원을 선택하세요", HOLIDAY_USERS, index=default_index)
         else:
-            st.caption(f"💡 이 데이터는 오직 **{st.session_state.current_user}** 님에게만 표시됩니다.")
+            st.caption(f"이 데이터는 오직 **{st.session_state.current_user}** 님에게만 표시됩니다.")
             target_user = st.session_state.current_user
 
         calendar_data = { w["label"]: [0.0] * 7 for w in weeks_info }
