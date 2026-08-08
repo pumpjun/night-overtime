@@ -342,6 +342,50 @@ with top_col2:
         st.rerun()
 st.markdown("---") 
 
+import time
+
+with st.expander("🔐 내 비밀번호 변경하기"):
+    with st.form("change_pw_form", border=False):
+        col_pw1, col_pw2, col_pw3 = st.columns(3)
+        with col_pw1:
+            old_pw = st.text_input("현재 비밀번호", type="password", placeholder="기존 비밀번호")
+        with col_pw2:
+            new_pw = st.text_input("새 비밀번호", type="password", placeholder="변경할 비밀번호")
+        with col_pw3:
+            new_pw_confirm = st.text_input("새 비밀번호 확인", type="password", placeholder="한번 더 입력")
+        
+        submit_pw = st.form_submit_button("비밀번호 변경 적용", type="primary", use_container_width=True)
+        
+        if submit_pw:
+            if old_pw != USER_PINS.get(st.session_state.current_user):
+                st.error("현재 비밀번호가 일치하지 않습니다.", icon=":material/error:")
+            elif new_pw != new_pw_confirm:
+                st.error("새 비밀번호가 서로 일치하지 않습니다.", icon=":material/error:")
+            elif len(new_pw) < 4:
+                st.error("보안을 위해 새 비밀번호는 4자리 이상 입력해주세요.", icon=":material/warning:")
+            elif old_pw == new_pw:
+                st.error("기존과 동일한 비밀번호입니다.", icon=":material/warning:")
+            else:
+                # 구글 시트에서 해당 사용자 찾아서 업데이트하기
+                row_index = -1
+                for i, row in enumerate(account_data):
+                    # 구글 시트의 1열(row[0])이 현재 접속한 유저의 이름과 같다면
+                    if len(row) >= 1 and row[0] == st.session_state.current_user:
+                        row_index = i + 1 # 구글 시트 행 번호는 1부터 시작하므로 +1
+                        break
+                
+                if row_index != -1:
+                    account_sheet.update_cell(row_index, 2, new_pw) # B열(2번째 열)을 새 비밀번호로 덮어쓰기
+                    st.success("비밀번호가 성공적으로 변경되었습니다! 안전을 위해 새 비밀번호로 다시 로그인해주세요.", icon=":material/check_circle:")
+                    
+                    # 1.5초 대기 후 강제 로그아웃 처리하여 새 비밀번호로 로그인 유도
+                    time.sleep(1.5)
+                    st.session_state.logged_in = False
+                    st.session_state.current_user = None
+                    st.rerun()
+                else:
+                    st.error("계정 정보를 찾을 수 없습니다. 관리자에게 문의하세요.", icon=":material/error:")
+
 # --- 2. 고정 데이터 및 날짜 정의 ---
 night_time_slots = ["19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"]
 holiday_time_slots = ["12:00", "17:00"] 
