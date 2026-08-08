@@ -8,10 +8,10 @@ from google.oauth2.service_account import Credentials
 import random
 import time
 
-# ⭐️ 1. 모바일/PC 넓게 쓰기 설정 (st.set_page_config는 항상 최상단에 위치해야 합니다)
+# ⭐️ 1. 모바일/PC 넓게 쓰기 설정
 st.set_page_config(
     page_title="T/S 근무 관리",       
-    page_icon="🗓️", # 💡 브라우저 탭 이모티콘 (원하는 이모티콘으로 변경 가능)
+    page_icon="🗓️", 
     layout="wide", 
     initial_sidebar_state="collapsed" 
 )
@@ -23,7 +23,7 @@ admins = ["장현준", "김동기", "최상철", "강택규", "김현준"]
 ALL_USERS = members + admins
 HOLIDAY_USERS = admins + members 
 
-# ⭐️ 3. 구글 스프레드시트 연동
+# ⭐️ 3. 구글 스프레드시트 연동 (접속 준비만 하고 데이터는 아직 안 불러옴!)
 @st.cache_resource
 def init_connection():
     key_dict = json.loads(st.secrets["gcp_service_account"])
@@ -37,17 +37,11 @@ def init_connection():
     doc = client.open_by_url(sheet_url)
     return doc
 
-# 문서 및 시트 연동
 doc = init_connection()
-sheet = doc.sheet1                       # 기존: 근무기록 시트
-account_sheet = doc.worksheet("계정정보")  # 신규: 계정/비밀번호 시트 (구글 시트에 미리 만들어두어야 함)
+sheet = doc.sheet1                       
+account_sheet = doc.worksheet("계정정보")  
 
-# 데이터 가져오기
-all_data = sheet.get_all_values()
-account_data = account_sheet.get_all_values()
-
-# 로그인 화면보다 위에서 USER_PINS를 미리 만들어 둡니다!
-USER_PINS = {row[0]: row[1] for row in account_data[1:] if len(row) >= 2}
+# (💡 속도 저하의 원인이었던 전체 데이터 불러오기 코드를 여기에서 아래쪽으로 이동시켰습니다.)
 
 def get_work_type(row):
     if len(row) >= 6 and row[5].strip() != "":
@@ -57,86 +51,65 @@ def get_work_type(row):
     return "야간"
 
 
-# ⭐️ 4. CSS 스타일 전역 주입
-custom_css = """
+# ⭐️ 4. CSS 스타일 전역 주입 (맥북용 Apple SD Gothic Neo 폰트 반영)
+font_family = "'Apple SD Gothic Neo', '맑은 고딕', 'Malgun Gothic', '돋움', Dotum, sans-serif"
+
+custom_css = f"""
 <style>
-    /* 1. 기본 UI 요소 및 상단 헤더 완전 숨기기 */
     [data-testid="stToolbar"], [data-testid="stAppDeployButton"], 
     [data-testid="stStatusWidget"], [data-testid="stDecoration"], 
-    [data-testid="collapsedControl"], header[data-testid="stHeader"] { 
+    [data-testid="collapsedControl"], header[data-testid="stHeader"] {{ 
         display: none !important; 
-    }
+    }}
+    ::-webkit-scrollbar {{ width: 0px; height: 0px; background: transparent; }}
+    html, body {{ -ms-overflow-style: none; scrollbar-width: none; overflow-x: hidden; font-family: {font_family}; }}
     
-    /* 2. 전체 스크롤바 투명하게 숨기기 */
-    ::-webkit-scrollbar { width: 0px; height: 0px; background: transparent; }
-    html, body { -ms-overflow-style: none; scrollbar-width: none; overflow-x: hidden; }
+    .stApp, .block-container {{ padding-top: 1rem !important; padding-bottom: 1rem !important; max-width: 100vw !important; }}
     
-    /* 3. 위아래 여백 대폭 축소 (1rem으로 최소화) */
-    .stApp, .block-container { 
-        padding-top: 1rem !important; 
-        padding-bottom: 1rem !important; 
-        max-width: 100vw !important; 
-    }
+    @media (max-width: 768px) {{
+        .block-container {{ padding-left: 0.8rem !important; padding-right: 0.8rem !important; }}
+        h1, h2, h3 {{ white-space: normal !important; word-break: keep-all !important; font-size: 6vw !important; letter-spacing: -0.5px !important; }}
+    }}
     
-    @media (max-width: 768px) {
-        .block-container {
-            padding-left: 0.8rem !important;
-            padding-right: 0.8rem !important;
-        }
-        h1, h2, h3 {
-            white-space: normal !important;
-            word-break: keep-all !important;
-            font-size: 6vw !important;
-            letter-spacing: -0.5px !important;
-        }
-    }
+    .stTabs [data-baseweb="tab-panel"] {{ padding-top: 0.5rem !important; }}
     
-    /* 탭(Tab) 아래 여백 축소 */
-    .stTabs [data-baseweb="tab-panel"] { padding-top: 0.5rem !important; }
+    .custom-overtime-table {{ width: 100%; border-collapse: collapse; text-align: center; font-size: 14.5px; table-layout: fixed; }}
+    .custom-overtime-table th, .custom-overtime-table td {{ border: 1px solid #dcdde1; padding: 6px 2px; text-align: center !important; vertical-align: middle !important; }}
+    .custom-overtime-table th {{ background-color: #f0f2f6; color: #31333F; font-weight: bold; }}
+    .overtime-checked {{ background-color: #fff5f5; color: #ff4b4b; font-weight: bold; }}
     
-    /* 테이블 디자인 */
-    .custom-overtime-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14.5px; table-layout: fixed; }
-    .custom-overtime-table th, .custom-overtime-table td { border: 1px solid #dcdde1; padding: 6px 2px; text-align: center !important; vertical-align: middle !important; }
-    .custom-overtime-table th { background-color: #f0f2f6; color: #31333F; font-weight: bold; }
-    .overtime-checked { background-color: #fff5f5; color: #ff4b4b; font-weight: bold; }
+    @media (max-width: 768px) {{
+        .custom-overtime-table {{ font-size: 2.8vw !important; }}
+        .custom-overtime-table th, .custom-overtime-table td {{ padding: 4px 0px !important; height: 30px; white-space: nowrap !important; letter-spacing: -0.5px !important; }}
+        .overtime-checked {{ font-size: 2.6vw !important; letter-spacing: -1px !important; }}
+    }}
     
-    @media (max-width: 768px) {
-        .custom-overtime-table { font-size: 2.8vw !important; }
-        .custom-overtime-table th, .custom-overtime-table td { padding: 4px 0px !important; height: 30px; white-space: nowrap !important; letter-spacing: -0.5px !important; }
-        .overtime-checked { font-size: 2.6vw !important; letter-spacing: -1px !important; }
-    }
-    
-    /* 버튼 2열 그리드 배치 */
-    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) {
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) {{
         display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 6px !important;
-    }
-    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:not(:has(style)) {
+    }}
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:not(:has(style)) {{
         width: calc(50% - 3px) !important; flex: 0 0 calc(50% - 3px) !important; min-width: 0 !important; 
-    }
-    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:has(style) {
-        display: none !important;
-    }
-    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) button {
+    }}
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) > div[data-testid="stElementContainer"]:has(style) {{ display: none !important; }}
+    div[data-testid="stVerticalBlock"]:has(> div[data-testid="stElementContainer"] style[data-target="btn-grid"]) button {{
         white-space: nowrap !important; height: auto !important; min-height: 38px !important; padding: 0 !important;
-    }
+    }}
     
-    /* 8주 달력 테이블 스타일 */
-    .weekly-summary-table { width: 100%; text-align: center; font-size: 13.5px; margin-top: 5px; border-collapse: collapse; table-layout: fixed; }
-    .weekly-summary-table th, .weekly-summary-table td { border: 1px solid #dcdde1; padding: 6px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .weekly-summary-table th { background-color: #e8f0fe; color: #1a73e8; }
-    .weekly-hours { font-weight: bold; color: #2c3e50; background-color: #f1f3f5; }
-    .weekly-label { font-weight: bold; background-color: #f8f9fa; color: #31333F; }
+    .weekly-summary-table {{ width: 100%; text-align: center; font-size: 13.5px; margin-top: 5px; border-collapse: collapse; table-layout: fixed; }}
+    .weekly-summary-table th, .weekly-summary-table td {{ border: 1px solid #dcdde1; padding: 6px 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+    .weekly-summary-table th {{ background-color: #e8f0fe; color: #1a73e8; }}
+    .weekly-hours {{ font-weight: bold; color: #2c3e50; background-color: #f1f3f5; }}
+    .weekly-label {{ font-weight: bold; background-color: #f8f9fa; color: #31333F; }}
     
-    @media (max-width: 768px) {
-        .weekly-summary-table { font-size: 2.3vw !important; }
-        .weekly-summary-table th, .weekly-summary-table td { padding: 3px 1px !important; }
-    }
+    @media (max-width: 768px) {{
+        .weekly-summary-table {{ font-size: 2.3vw !important; }}
+        .weekly-summary-table th, .weekly-summary-table td {{ padding: 3px 1px !important; }}
+    }}
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
 
-# ⭐️ 매일 바뀌는 일일 예외 암호 생성 함수
 def get_daily_password(date_str):
     random.seed(date_str + "_TS_TEAM_SECRET")
     pw = str(random.randint(1000, 9999))
@@ -144,14 +117,11 @@ def get_daily_password(date_str):
     return pw
 
 
-# ⭐️ 하이웍스 최적화 폰트 사이즈 반영 및 과거기록 HR 자동계산 함수
 def render_copyable_table(records, work_type, date_str, current_user, is_past_record=False):
     if not records:
         st.info("해당 날짜에 등록된 근무자가 없습니다.", icon=":material/info:")
         return
         
-    font_family = "'맑은 고딕', 'Malgun Gothic', '돋움', Dotum, sans-serif"
-    
     title_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 16px; font-weight: normal; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 10px;"
     red_alert_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 9pt; font-weight: bold; color: #FF0000; background-color: #ffffff; text-align: left; vertical-align: middle; padding: 6px; line-height: 1.4;"
     bold_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 11pt; font-weight: bold; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
@@ -197,33 +167,16 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
         body {{ margin: 0; padding: 0; font-family: {font_family}; }}
-        .btn-container {{ 
-            display: flex; 
-            gap: 10px; 
-            margin-bottom: 10px; 
-        }}
+        .btn-container {{ display: flex; gap: 10px; margin-bottom: 10px; }}
         .copy-btn, .link-btn {{
-            flex: 1; 
-            padding: 12px; 
-            color: white; 
-            border: none; 
-            border-radius: 6px; 
-            font-size: 15px; 
-            cursor: pointer; 
-            font-weight: bold;
-            text-align: center;
-            text-decoration: none;
-            transition: background-color 0.3s; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            box-sizing: border-box;
+            flex: 1; padding: 12px; color: white; border: none; border-radius: 6px; 
+            font-size: 15px; cursor: pointer; font-weight: bold; text-align: center;
+            text-decoration: none; transition: background-color 0.3s; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center;
+            justify-content: center; gap: 6px; box-sizing: border-box; font-family: {font_family};
         }}
         .copy-btn {{ background-color: #1b489d; }}
         .copy-btn:hover {{ background-color: #1b489d; }}
-        
         .link-btn {{ background-color: #1b489d; }}
         .link-btn:hover {{ background-color: #16a34a; }}
     </style>
@@ -272,27 +225,20 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
                 </tbody>
             </table>
         </div>
-        
         <script>
         function copyTable() {{
             var el = document.getElementById("table-container");
             var range = document.createRange();
             var sel = window.getSelection();
             sel.removeAllRanges();
-            try {{
-                range.selectNodeContents(el);
-                sel.addRange(range);
-            }} catch (e) {{
-                range.selectNode(el);
-                sel.addRange(range);
-            }}
+            try {{ range.selectNodeContents(el); sel.addRange(range); }} 
+            catch (e) {{ range.selectNode(el); sel.addRange(range); }}
             document.execCommand("copy");
             sel.removeAllRanges();
             
             var btn = document.querySelector(".copy-btn");
             var btnText = document.getElementById("btn-text");
             var icon = btn.querySelector('.material-symbols-outlined');
-            
             var originalText = btnText.innerText;
             
             icon.innerText = "check_circle";
@@ -318,7 +264,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "current_user" not in st.session_state: st.session_state.current_user = None
 if "login_selected_user" not in st.session_state: st.session_state.login_selected_user = ALL_USERS[0]
 
-# 🔒 로그인 화면
+# 🔒 로그인 화면 (데이터 로딩 없이 즉각 반응)
 if not st.session_state.logged_in:
     st.markdown("## :material/domain: T/S 근무 계획 관리 시스템")
     st.caption("Created by tskwon :material/science:")
@@ -355,20 +301,31 @@ if not st.session_state.logged_in:
             submitted = st.form_submit_button("로그인", type="primary", use_container_width=True, icon=":material/login:")
             
             if submitted:
-                if USER_PINS.get(st.session_state.login_selected_user) == pin_input:
-                    st.session_state.logged_in = True
-                    st.session_state.current_user = st.session_state.login_selected_user
-                    st.rerun()
-                else:
-                    st.error("비밀번호가 일치하지 않습니다.", icon=":material/error:")
+                # 💡 로그인 버튼을 눌렀을 때만 계정 시트 정보를 불러옵니다! (렉 해결)
+                with st.spinner("계정 정보를 확인하고 있습니다..."):
+                    account_data = account_sheet.get_all_values()
+                    USER_PINS = {row[0]: row[1] for row in account_data[1:] if len(row) >= 2}
+                    
+                    if USER_PINS.get(st.session_state.login_selected_user) == pin_input:
+                        st.session_state.logged_in = True
+                        st.session_state.current_user = st.session_state.login_selected_user
+                        st.rerun()
+                    else:
+                        st.error("비밀번호가 일치하지 않습니다.", icon=":material/error:")
     st.stop() 
 
 
 # =====================================================================
-# 로그인 성공 시 메인 화면
+# 로그인 성공 시 메인 화면 (전체 데이터 불러오기)
 # =====================================================================
 
-# ⭐️ 상단 헤더 및 로그아웃/비밀번호 변경 버튼 배치 (비율 조정)
+# 💡 로그인에 성공해야만 전체 근무기록과 계정 정보를 쫙 불러옵니다.
+with st.spinner("데이터를 불러오는 중입니다..."):
+    all_data = sheet.get_all_values()
+    account_data = account_sheet.get_all_values()
+    USER_PINS = {row[0]: row[1] for row in account_data[1:] if len(row) >= 2}
+
+# ⭐️ 상단 헤더 및 로그아웃/비밀번호 변경 버튼 배치
 top_col1, top_col2, top_col3 = st.columns([5.5, 1.5, 1.5])
 
 with top_col1:
@@ -376,7 +333,6 @@ with top_col1:
     st.caption("Created by tskwon :material/science:")
 
 with top_col2:
-    # 팝오버를 사용해 로그아웃 버튼 옆에 깔끔하게 배치
     with st.popover("비밀번호 변경", icon=":material/key:", use_container_width=True):
         with st.form("change_pw_form", border=False):
             old_pw = st.text_input("현재 비밀번호", type="password", placeholder="기존 비밀번호")
