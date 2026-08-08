@@ -22,7 +22,7 @@ admins = ["장현준", "김동기", "최상철", "강택규", "김현준"]
 ALL_USERS = members + admins
 HOLIDAY_USERS = admins + members 
 
-# ⭐️ 3. 구글 스프레드시트 연동 (가장 먼저 데이터를 불러와야 USER_PINS 에러가 나지 않음)
+# ⭐️ 3. 구글 스프레드시트 연동
 @st.cache_resource
 def init_connection():
     key_dict = json.loads(st.secrets["gcp_service_account"])
@@ -367,58 +367,56 @@ if not st.session_state.logged_in:
 # 로그인 성공 시 메인 화면
 # =====================================================================
 
-top_col1, top_col2 = st.columns([4, 1])
+# ⭐️ 상단 헤더 및 로그아웃/비밀번호 변경 버튼 배치 (비율 조정)
+top_col1, top_col2, top_col3 = st.columns([5.5, 1.5, 1.5])
+
 with top_col1:
     st.markdown("## :material/domain: T/S 근무 계획 관리 시스템") 
     st.caption("Created by tskwon :material/science:")
+
 with top_col2:
+    # 팝오버를 사용해 로그아웃 버튼 옆에 깔끔하게 배치
+    with st.popover("비밀번호 변경", icon=":material/key:", use_container_width=True):
+        with st.form("change_pw_form", border=False):
+            old_pw = st.text_input("현재 비밀번호", type="password", placeholder="기존 비밀번호")
+            new_pw = st.text_input("새 비밀번호", type="password", placeholder="변경할 비밀번호")
+            new_pw_confirm = st.text_input("새 비밀번호 확인", type="password", placeholder="한번 더 입력")
+            
+            submit_pw = st.form_submit_button("변경 적용", type="primary", use_container_width=True)
+            
+            if submit_pw:
+                if old_pw != USER_PINS.get(st.session_state.current_user):
+                    st.error("현재 비밀번호가 일치하지 않습니다.", icon=":material/error:")
+                elif new_pw != new_pw_confirm:
+                    st.error("새 비밀번호가 서로 일치하지 않습니다.", icon=":material/error:")
+                elif len(new_pw) < 4:
+                    st.error("보안을 위해 4자리 이상 입력해주세요.", icon=":material/warning:")
+                elif old_pw == new_pw:
+                    st.error("기존과 동일한 비밀번호입니다.", icon=":material/warning:")
+                else:
+                    row_index = -1
+                    for i, row in enumerate(account_data):
+                        if len(row) >= 1 and row[0] == st.session_state.current_user:
+                            row_index = i + 1 
+                            break
+                    
+                    if row_index != -1:
+                        account_sheet.update_cell(row_index, 2, new_pw) 
+                        st.success("변경 완료! 다시 로그인해주세요.", icon=":material/check_circle:")
+                        time.sleep(1.5)
+                        st.session_state.logged_in = False
+                        st.session_state.current_user = None
+                        st.rerun()
+                    else:
+                        st.error("계정 정보를 찾을 수 없습니다.", icon=":material/error:")
+
+with top_col3:
     if st.button("로그아웃", use_container_width=True, icon=":material/logout:"):
         st.session_state.logged_in = False
         st.session_state.current_user = None
         st.rerun()
+        
 st.markdown("---") 
-
-# 🔐 비밀번호 변경 기능
-with st.expander("🔐 내 비밀번호 변경하기"):
-    with st.form("change_pw_form", border=False):
-        col_pw1, col_pw2, col_pw3 = st.columns(3)
-        with col_pw1:
-            old_pw = st.text_input("현재 비밀번호", type="password", placeholder="기존 비밀번호")
-        with col_pw2:
-            new_pw = st.text_input("새 비밀번호", type="password", placeholder="변경할 비밀번호")
-        with col_pw3:
-            new_pw_confirm = st.text_input("새 비밀번호 확인", type="password", placeholder="한번 더 입력")
-        
-        submit_pw = st.form_submit_button("비밀번호 변경 적용", type="primary", use_container_width=True)
-        
-        if submit_pw:
-            if old_pw != USER_PINS.get(st.session_state.current_user):
-                st.error("현재 비밀번호가 일치하지 않습니다.", icon=":material/error:")
-            elif new_pw != new_pw_confirm:
-                st.error("새 비밀번호가 서로 일치하지 않습니다.", icon=":material/error:")
-            elif len(new_pw) < 4:
-                st.error("보안을 위해 새 비밀번호는 4자리 이상 입력해주세요.", icon=":material/warning:")
-            elif old_pw == new_pw:
-                st.error("기존과 동일한 비밀번호입니다.", icon=":material/warning:")
-            else:
-                # 구글 시트에서 해당 사용자 찾아서 업데이트하기
-                row_index = -1
-                for i, row in enumerate(account_data):
-                    # 구글 시트의 1열(row[0])이 현재 접속한 유저의 이름과 같다면
-                    if len(row) >= 1 and row[0] == st.session_state.current_user:
-                        row_index = i + 1 # 구글 시트 행 번호는 1부터 시작하므로 +1
-                        break
-                
-                if row_index != -1:
-                    account_sheet.update_cell(row_index, 2, new_pw) # B열(2번째 열)을 새 비밀번호로 덮어쓰기
-                    st.success("비밀번호가 성공적으로 변경되었습니다! 안전을 위해 새 비밀번호로 다시 로그인해주세요.", icon=":material/check_circle:")
-                    
-                    time.sleep(1.5)
-                    st.session_state.logged_in = False
-                    st.session_state.current_user = None
-                    st.rerun()
-                else:
-                    st.error("계정 정보를 찾을 수 없습니다. 관리자에게 문의하세요.", icon=":material/error:")
 
 
 # --- 6. 고정 데이터 및 날짜 정의 ---
@@ -464,6 +462,7 @@ with col2:
     view_saturday_date = view_date + timedelta(days=(5 - view_date.weekday()))
     view_saturday_str = view_saturday_date.strftime('%Y-%m-%d')
 
+
 # ⭐️ 좌측 화면(col1) 선언: 결재 상신 / 계획 등록
 with col1:
     if st.session_state.current_user in admins:
@@ -472,8 +471,9 @@ with col1:
         daily_pw = get_daily_password(today_str)
         st.info(f"오늘({today_str})의 지각자 예외 암호: **{daily_pw}** (직원 문의 시 안내)", icon=":material/key:")
         
+        # --- 야간 결재 상신 표 ---
         st.markdown("<hr style='margin: 15px 0px 10px 0px; border: none; border-top: 1px solid #ddd;'>", unsafe_allow_html=True)
-        st.markdown(f"##### :material/dark_mode: 야간 시간외근무 상신 ({view_str})")
+        st.markdown(f"##### :material/dark_mode: 야간 상신 ({view_str})")
         
         records_night = []
         for row in all_data[1:]:
@@ -495,6 +495,25 @@ with col1:
         else:
             is_past = (view_date < today_date)
             render_copyable_table(records_night, "야간", view_str, st.session_state.current_user, is_past)
+            
+        # --- 휴일 결재 상신 표 (우측에서 좌측으로 이동됨) ---
+        st.markdown("<hr style='margin: 25px 0px 10px 0px; border: none; border-top: 1px solid #ddd;'>", unsafe_allow_html=True)
+        st.markdown(f"##### :material/light_mode: 휴일 상신 ({view_saturday_str})")
+        
+        records_holiday = []
+        for row in all_data[1:]:
+            if len(row) >= 4 and row[2] == view_saturday_str:
+                row_wt = get_work_type(row) 
+                if row_wt == "휴일":
+                    row_name = row[1]
+                    row_end_time = row[3]
+                    reason = row[4] if len(row) >= 5 and row[4].strip() != "" else "휴일 특근"
+                    records_holiday.append((row_name, row_end_time, reason))
+        
+        records_holiday.sort(key=lambda x: HOLIDAY_USERS.index(x[0]) if x[0] in HOLIDAY_USERS else 999)
+        
+        is_past_holiday = (view_saturday_date < today_date)
+        render_copyable_table(records_holiday, "휴일", view_saturday_str, st.session_state.current_user, is_past_holiday)
 
     else:
         st.markdown(f"#### :material/edit_document: 계획 등록 <span style='{badge_style}'>{st.session_state.current_user}</span>", unsafe_allow_html=True)
@@ -629,10 +648,11 @@ with col1:
 
 # ⭐️ 다시 우측 화면(col2) 선언: 하단 현황판 및 달력 렌더링
 with col2:
+    # '휴일 현황' 탭이 삭제되어 총 2개의 탭으로 변경되었습니다.
     if st.session_state.current_user in admins:
-        tab1, tab2, tab3 = st.tabs([":material/dark_mode: 야간 현황", ":material/light_mode: 휴일 현황", ":material/calendar_month: 8주 달력 조회"])
+        tab1, tab2 = st.tabs([":material/dark_mode: 야간 현황", ":material/calendar_month: 8주 달력 조회"])
     else:
-        tab1, tab2, tab3 = st.tabs([":material/dark_mode: 야간 현황", ":material/light_mode: 휴일 현황", ":material/calendar_month: 나의 8주 달력"])
+        tab1, tab2 = st.tabs([":material/dark_mode: 야간 현황", ":material/calendar_month: 나의 8주 달력"])
     
     # === 탭 1: 야간근무 현황 ===
     with tab1:
@@ -665,46 +685,8 @@ with col2:
         html_code += '</tbody></table>'
         st.markdown(html_code, unsafe_allow_html=True)
 
-    # === 탭 2: 휴일근무 현황 ===
+    # === 탭 2: 요일별 8주 달력 (기존 휴일현황 삭제됨) ===
     with tab2:
-        grid_df_holiday = pd.DataFrame(index=holiday_time_slots, columns=HOLIDAY_USERS).fillna("")
-        records_holiday_view = []
-        
-        for row in all_data[1:]:
-            if len(row) >= 4 and row[2] == view_saturday_str:
-                row_wt = get_work_type(row) 
-                if row_wt == "휴일":
-                    row_name = row[1]
-                    row_end_time = row[3]
-                    reason = row[4] if len(row) >= 5 and row[4].strip() != "" else "휴일 특근"
-                    records_holiday_view.append((row_name, row_end_time, reason))
-        
-        records_holiday_view.sort(key=lambda x: HOLIDAY_USERS.index(x[0]) if x[0] in HOLIDAY_USERS else 999)
-        
-        for name, end_t, reason in records_holiday_view:
-            if end_t in grid_df_holiday.index and name in grid_df_holiday.columns:
-                grid_df_holiday.loc[end_t, name] = "휴일"
-                    
-        html_code_h = f'<table class="custom-overtime-table"><thead><tr><th>시간</th>'
-        for col in grid_df_holiday.columns: html_code_h += f'<th>{col}</th>'
-        html_code_h += '</tr></thead><tbody>'
-        for index, row in grid_df_holiday.iterrows():
-            html_code_h += f'<tr><th>{index}</th>'
-            for val in row:
-                html_code_h += f'<td class="overtime-checked">{val}</td>' if val == "휴일" else f'<td>{val}</td>'
-            html_code_h += '</tr>'
-        html_code_h += '</tbody></table>'
-        st.markdown(html_code_h, unsafe_allow_html=True)
-        
-        if st.session_state.current_user in admins:
-            st.markdown("<hr style='margin: 25px 0px 10px 0px; border: none; border-top: 1px solid #ddd;'>", unsafe_allow_html=True)
-            st.markdown(f"##### :material/light_mode: 휴일 시간외근무 상신 ({view_saturday_str})")
-            
-            is_past_holiday = (view_saturday_date < today_date)
-            render_copyable_table(records_holiday_view, "휴일", view_saturday_str, st.session_state.current_user, is_past_holiday)
-
-    # === 탭 3: 요일별 8주 달력 ===
-    with tab3:
         current_week_start = view_date - timedelta(days=view_date.weekday())
         weeks_info = []
         for i in range(7, -1, -1):
