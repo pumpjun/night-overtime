@@ -11,6 +11,7 @@ import time
 # ⭐️ 1. 모바일/PC 넓게 쓰기 설정 (st.set_page_config는 항상 최상단에 위치해야 합니다)
 st.set_page_config(
     page_title="T/S 근무 관리",       
+    page_icon="🗓️", # 💡 브라우저 탭 이모티콘 (원하는 이모티콘으로 변경 가능)
     layout="wide", 
     initial_sidebar_state="collapsed" 
 )
@@ -496,25 +497,6 @@ with col1:
             is_past = (view_date < today_date)
             render_copyable_table(records_night, "야간", view_str, st.session_state.current_user, is_past)
             
-        # --- 휴일 결재 상신 표 (우측에서 좌측으로 이동됨) ---
-        st.markdown("<hr style='margin: 25px 0px 10px 0px; border: none; border-top: 1px solid #ddd;'>", unsafe_allow_html=True)
-        st.markdown(f"##### :material/light_mode: 휴일 상신 ({view_saturday_str})")
-        
-        records_holiday = []
-        for row in all_data[1:]:
-            if len(row) >= 4 and row[2] == view_saturday_str:
-                row_wt = get_work_type(row) 
-                if row_wt == "휴일":
-                    row_name = row[1]
-                    row_end_time = row[3]
-                    reason = row[4] if len(row) >= 5 and row[4].strip() != "" else "휴일 특근"
-                    records_holiday.append((row_name, row_end_time, reason))
-        
-        records_holiday.sort(key=lambda x: HOLIDAY_USERS.index(x[0]) if x[0] in HOLIDAY_USERS else 999)
-        
-        is_past_holiday = (view_saturday_date < today_date)
-        render_copyable_table(records_holiday, "휴일", view_saturday_str, st.session_state.current_user, is_past_holiday)
-
     else:
         st.markdown(f"#### :material/edit_document: 계획 등록 <span style='{badge_style}'>{st.session_state.current_user}</span>", unsafe_allow_html=True)
         
@@ -648,7 +630,6 @@ with col1:
 
 # ⭐️ 다시 우측 화면(col2) 선언: 하단 현황판 및 달력 렌더링
 with col2:
-    # '휴일 현황' 탭이 삭제되어 총 2개의 탭으로 변경되었습니다.
     if st.session_state.current_user in admins:
         tab1, tab2 = st.tabs([":material/dark_mode: 야간 현황", ":material/calendar_month: 8주 달력 조회"])
     else:
@@ -685,7 +666,7 @@ with col2:
         html_code += '</tbody></table>'
         st.markdown(html_code, unsafe_allow_html=True)
 
-    # === 탭 2: 요일별 8주 달력 (기존 휴일현황 삭제됨) ===
+    # === 탭 2: 요일별 8주 달력 ===
     with tab2:
         current_week_start = view_date - timedelta(days=view_date.weekday())
         weeks_info = []
