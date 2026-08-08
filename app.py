@@ -6,23 +6,57 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 import random
+import time
 
-# --- 0. 사용자 및 관리자 정의, 비밀번호 세팅 ---
-members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이"]
-admins = ["장현준", "김동기", "최상철", "강택규", "김현준"]
-
-ALL_USERS = members + admins
-HOLIDAY_USERS = admins + members 
-
-
-# 모바일/PC 넓게 쓰기 설정 및 사이드바 기본 숨김
+# ⭐️ 1. 모바일/PC 넓게 쓰기 설정 (st.set_page_config는 항상 최상단에 위치해야 합니다)
 st.set_page_config(
     page_title="T/S 근무 관리",       
     layout="wide", 
     initial_sidebar_state="collapsed" 
 )
 
-# ⭐️ CSS 스타일 전역 주입
+# ⭐️ 2. 사용자 및 관리자 정의
+members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이"]
+admins = ["장현준", "김동기", "최상철", "강택규", "김현준"]
+
+ALL_USERS = members + admins
+HOLIDAY_USERS = admins + members 
+
+# ⭐️ 3. 구글 스프레드시트 연동 (가장 먼저 데이터를 불러와야 USER_PINS 에러가 나지 않음)
+@st.cache_resource
+def init_connection():
+    key_dict = json.loads(st.secrets["gcp_service_account"])
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+    creds = Credentials.from_service_account_info(key_dict, scopes=scopes)
+    client = gspread.authorize(creds)
+    sheet_url = "https://docs.google.com/spreadsheets/d/1v4REfMtoTB9CQzBRks45UpaVmptHxYD-mYeAOnavDvY/edit?gid=0#gid=0"
+    doc = client.open_by_url(sheet_url)
+    return doc
+
+# 문서 및 시트 연동
+doc = init_connection()
+sheet = doc.sheet1                       # 기존: 근무기록 시트
+account_sheet = doc.worksheet("계정정보")  # 신규: 계정/비밀번호 시트 (구글 시트에 미리 만들어두어야 함)
+
+# 데이터 가져오기
+all_data = sheet.get_all_values()
+account_data = account_sheet.get_all_values()
+
+# 로그인 화면보다 위에서 USER_PINS를 미리 만들어 둡니다!
+USER_PINS = {row[0]: row[1] for row in account_data[1:] if len(row) >= 2}
+
+def get_work_type(row):
+    if len(row) >= 6 and row[5].strip() != "":
+        return row[5].strip()
+    if len(row) >= 4 and row[3] in ["12:00", "17:00"]:
+        return "휴일"
+    return "야간"
+
+
+# ⭐️ 4. CSS 스타일 전역 주입
 custom_css = """
 <style>
     /* 1. 기본 UI 요소 및 상단 헤더 완전 숨기기 */
@@ -100,12 +134,14 @@ custom_css = """
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
+
 # ⭐️ 매일 바뀌는 일일 예외 암호 생성 함수
 def get_daily_password(date_str):
     random.seed(date_str + "_TS_TEAM_SECRET")
     pw = str(random.randint(1000, 9999))
     random.seed() 
     return pw
+
 
 # ⭐️ 하이웍스 최적화 폰트 사이즈 반영 및 과거기록 HR 자동계산 함수
 def render_copyable_table(records, work_type, date_str, current_user, is_past_record=False):
@@ -276,14 +312,13 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
     components.html(html_string, height=height, scrolling=True)
 
 
-# --- 1. 세션 상태 관리 (로그인 처리) ---
+# --- 5. 세션 상태 관리 (로그인 처리) ---
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "current_user" not in st.session_state: st.session_state.current_user = None
 if "login_selected_user" not in st.session_state: st.session_state.login_selected_user = ALL_USERS[0]
 
 # 🔒 로그인 화면
 if not st.session_state.logged_in:
-    # 🌟 완벽한 정렬을 보장하는 네이티브 문법 사용
     st.markdown("## :material/domain: T/S 근무 계획 관리 시스템")
     st.caption("Created by tskwon :material/science:")
     
@@ -315,7 +350,7 @@ if not st.session_state.logged_in:
         st.markdown(f"**현재 선택됨:** `{st.session_state.login_selected_user}`")
         
         with st.form("login_form", border=False):
-            pin_input = st.text_input("비밀번호", type="password", placeholder="비밀번호 4자리 입력")
+            pin_input = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력")
             submitted = st.form_submit_button("로그인", type="primary", use_container_width=True, icon=":material/login:")
             
             if submitted:
@@ -326,6 +361,7 @@ if not st.session_state.logged_in:
                 else:
                     st.error("비밀번호가 일치하지 않습니다.", icon=":material/error:")
     st.stop() 
+
 
 # =====================================================================
 # 로그인 성공 시 메인 화면
@@ -342,8 +378,7 @@ with top_col2:
         st.rerun()
 st.markdown("---") 
 
-import time
-
+# 🔐 비밀번호 변경 기능
 with st.expander("🔐 내 비밀번호 변경하기"):
     with st.form("change_pw_form", border=False):
         col_pw1, col_pw2, col_pw3 = st.columns(3)
@@ -378,7 +413,6 @@ with st.expander("🔐 내 비밀번호 변경하기"):
                     account_sheet.update_cell(row_index, 2, new_pw) # B열(2번째 열)을 새 비밀번호로 덮어쓰기
                     st.success("비밀번호가 성공적으로 변경되었습니다! 안전을 위해 새 비밀번호로 다시 로그인해주세요.", icon=":material/check_circle:")
                     
-                    # 1.5초 대기 후 강제 로그아웃 처리하여 새 비밀번호로 로그인 유도
                     time.sleep(1.5)
                     st.session_state.logged_in = False
                     st.session_state.current_user = None
@@ -386,7 +420,8 @@ with st.expander("🔐 내 비밀번호 변경하기"):
                 else:
                     st.error("계정 정보를 찾을 수 없습니다. 관리자에게 문의하세요.", icon=":material/error:")
 
-# --- 2. 고정 데이터 및 날짜 정의 ---
+
+# --- 6. 고정 데이터 및 날짜 정의 ---
 night_time_slots = ["19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"]
 holiday_time_slots = ["12:00", "17:00"] 
 
@@ -398,45 +433,8 @@ today_str = today_date.strftime('%Y-%m-%d')
 this_saturday_date = today_date + timedelta(days=(5 - today_date.weekday()))
 this_saturday_str = this_saturday_date.strftime('%Y-%m-%d')
 
-# --- 3. 구글 스프레드시트 연동 ---
-@st.cache_resource
-def init_connection():
-    key_dict = json.loads(st.secrets["gcp_service_account"])
-    scopes = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
-    creds = Credentials.from_service_account_info(key_dict, scopes=scopes)
-    client = gspread.authorize(creds)
-    sheet_url = "https://docs.google.com/spreadsheets/d/1v4REfMtoTB9CQzBRks45UpaVmptHxYD-mYeAOnavDvY/edit?gid=0#gid=0"
-    
-    # 변경됨: 시트1만 가져오지 않고 문서 전체(doc)를 가져옵니다.
-    doc = client.open_by_url(sheet_url)
-    return doc
 
-# 1. 문서 불러오기
-doc = init_connection()
-
-# 2. 각 시트(탭) 따로 연결하기
-sheet = doc.sheet1                       # 기존: 근무기록 시트
-account_sheet = doc.worksheet("계정정보")  # 신규: 방금 구글 드라이브에서 추가한 비밀번호 시트
-
-# 3. 데이터 가져오기
-all_data = sheet.get_all_values()
-account_data = account_sheet.get_all_values()
-
-# 4. 시트에서 가져온 데이터로 USER_PINS 만들기 (기존 로그인 로직과 완벽 호환!)
-# (구글 시트의 첫 번째 줄은 '이름', '비밀번호' 같은 제목이므로 제외하고 가져옵니다)
-USER_PINS = {row[0]: row[1] for row in account_data[1:] if len(row) >= 2}
-
-def get_work_type(row):
-    if len(row) >= 6 and row[5].strip() != "":
-        return row[5].strip()
-    if len(row) >= 4 and row[3] in ["12:00", "17:00"]:
-        return "휴일"
-    return "야간"
-
-# --- 4. 기타 상태 관리 ---
+# --- 7. 기타 상태 관리 ---
 if "night_end_time" not in st.session_state: st.session_state.night_end_time = night_time_slots[0]
 if "night_reason" not in st.session_state: st.session_state.night_reason = ""
 
@@ -445,7 +443,7 @@ if "holiday_end_time" not in st.session_state or st.session_state.holiday_end_ti
 if "holiday_reason" not in st.session_state: st.session_state.holiday_reason = ""
 
 
-# --- 5. 화면 레이아웃 분할 ---
+# --- 8. 화면 레이아웃 분할 ---
 col1, col2 = st.columns([1, 1.5])
 
 # 공통 뱃지(Badge) 색상 세팅
@@ -459,14 +457,14 @@ except:
 badge_style = f"background-color: {theme_primary}; color: white; border: 1px solid {theme_primary}; border-radius: 6px; padding: 3px 12px; font-size: 15px; font-weight: normal; margin-left: 8px;"
 
 
-# ⭐️ 1. 우측 화면(col2) 먼저 선언: 날짜 변수 확보
+# ⭐️ 우측 화면(col2) 먼저 선언: 날짜 변수 확보
 with col2:
     view_date = st.date_input("조회 및 상신 기준 날짜 선택", today_date)
     view_str = view_date.strftime('%Y-%m-%d')
     view_saturday_date = view_date + timedelta(days=(5 - view_date.weekday()))
     view_saturday_str = view_saturday_date.strftime('%Y-%m-%d')
 
-# ⭐️ 2. 좌측 화면(col1) 선언: 결재 상신 / 계획 등록
+# ⭐️ 좌측 화면(col1) 선언: 결재 상신 / 계획 등록
 with col1:
     if st.session_state.current_user in admins:
         st.markdown(f"#### :material/inbox: 결재 상신 데이터 <span style='{badge_style}'>{st.session_state.current_user}</span>", unsafe_allow_html=True)
@@ -629,7 +627,7 @@ with col1:
                         st.info(f"기록 없음", icon=":material/info:")
                     st.rerun()
 
-# ⭐️ 3. 다시 우측 화면(col2) 선언: 하단 현황판 및 달력 렌더링
+# ⭐️ 다시 우측 화면(col2) 선언: 하단 현황판 및 달력 렌더링
 with col2:
     if st.session_state.current_user in admins:
         tab1, tab2, tab3 = st.tabs([":material/dark_mode: 야간 현황", ":material/light_mode: 휴일 현황", ":material/calendar_month: 8주 달력 조회"])
