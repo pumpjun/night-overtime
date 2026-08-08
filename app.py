@@ -14,7 +14,6 @@ admins = ["장현준", "김동기", "최상철", "강택규", "김현준"]
 ALL_USERS = members + admins
 HOLIDAY_USERS = admins + members 
 
-USER_PINS = {user: "5050" for user in ALL_USERS}
 
 # 모바일/PC 넓게 쓰기 설정 및 사이드바 기본 숨김
 st.set_page_config(
@@ -366,10 +365,25 @@ def init_connection():
     creds = Credentials.from_service_account_info(key_dict, scopes=scopes)
     client = gspread.authorize(creds)
     sheet_url = "https://docs.google.com/spreadsheets/d/1v4REfMtoTB9CQzBRks45UpaVmptHxYD-mYeAOnavDvY/edit?gid=0#gid=0"
-    return client.open_by_url(sheet_url).sheet1
+    
+    # 변경됨: 시트1만 가져오지 않고 문서 전체(doc)를 가져옵니다.
+    doc = client.open_by_url(sheet_url)
+    return doc
 
-sheet = init_connection()
+# 1. 문서 불러오기
+doc = init_connection()
+
+# 2. 각 시트(탭) 따로 연결하기
+sheet = doc.sheet1                       # 기존: 근무기록 시트
+account_sheet = doc.worksheet("계정정보")  # 신규: 방금 구글 드라이브에서 추가한 비밀번호 시트
+
+# 3. 데이터 가져오기
 all_data = sheet.get_all_values()
+account_data = account_sheet.get_all_values()
+
+# 4. 시트에서 가져온 데이터로 USER_PINS 만들기 (기존 로그인 로직과 완벽 호환!)
+# (구글 시트의 첫 번째 줄은 '이름', '비밀번호' 같은 제목이므로 제외하고 가져옵니다)
+USER_PINS = {row[0]: row[1] for row in account_data[1:] if len(row) >= 2}
 
 def get_work_type(row):
     if len(row) >= 6 and row[5].strip() != "":
