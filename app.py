@@ -17,7 +17,7 @@ st.set_page_config(
 )
 
 # ⭐️ 2. 사용자 및 관리자 정의
-members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이"]
+members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이", "라나"]
 admins = ["장현준", "김동기", "최상철", "강택규", "김현준"]
 
 ALL_USERS = members + admins
@@ -117,11 +117,14 @@ def get_daily_password(date_str):
     return pw
 
 
+# ⭐️ 하이웍스 최적화 폰트 사이즈 반영 및 과거기록 HR 자동계산 함수
 def render_copyable_table(records, work_type, date_str, current_user, is_past_record=False):
     if not records:
         st.info("해당 날짜에 등록된 근무자가 없습니다.", icon=":material/info:")
         return
         
+    font_family = "'Apple SD Gothic Neo', '맑은 고딕', 'Malgun Gothic', '돋움', Dotum, sans-serif"
+    
     title_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 16px; font-weight: normal; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 10px;"
     red_alert_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 9pt; font-weight: bold; color: #FF0000; background-color: #ffffff; text-align: left; vertical-align: middle; padding: 6px; line-height: 1.4;"
     bold_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 11pt; font-weight: bold; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
@@ -130,7 +133,6 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
     rows_html = ""
     for idx, (name, end_t, reason) in enumerate(records, start=1):
         time_str = f"17:30 ~ {end_t}" if work_type == "야간" else f"08:00 ~ {end_t}"
-        
         actual_time_str = ""
         hr_str = ""
         
@@ -147,16 +149,7 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
             except ValueError:
                 hr_str = ""
         
-        rows_html += f"""
-        <tr>
-            <td style="{normal_style}">{idx}</td>
-            <td colspan="2" style="{normal_style}">{name}</td>
-            <td style="{normal_style}">{time_str}</td>
-            <td style="{normal_style} text-align: left;">{reason}</td>
-            <td style="{normal_style}">{actual_time_str}</td>
-            <td style="{normal_style}">{hr_str}</td>
-        </tr>
-        """
+        rows_html += f'<tr><td style="{normal_style}">{idx}</td><td colspan="2" style="{normal_style}">{name}</td><td style="{normal_style}">{time_str}</td><td style="{normal_style} text-align: left;">{reason}</td><td style="{normal_style}">{actual_time_str}</td><td style="{normal_style}">{hr_str}</td></tr>'
     
     hiworks_url = "https://approval.office.hiworks.com/ohyoung.net/approval/document/write"
     
@@ -164,6 +157,7 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
     <!DOCTYPE html>
     <html>
     <head>
+    <meta charset="utf-8">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
         body {{ margin: 0; padding: 0; font-family: {font_family}; }}
@@ -176,7 +170,7 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
             justify-content: center; gap: 6px; box-sizing: border-box; font-family: {font_family};
         }}
         .copy-btn {{ background-color: #1b489d; }}
-        .copy-btn:hover {{ background-color: #1b489d; }}
+        .copy-btn:hover {{ background-color: #153b82; }}
         .link-btn {{ background-color: #1b489d; }}
         .link-btn:hover {{ background-color: #16a34a; }}
     </style>
@@ -192,50 +186,74 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
                 하이웍스 결재창 열기
             </a>
         </div>
-        <div id="table-container">
-            <table style="border-collapse: collapse; width: 100%;">
-                <tbody>
-                    <tr>
-                        <td colspan="7" style="{title_style}">시간외근무</td>
-                    </tr>
-                    <tr>
-                        <td colspan="2" rowspan="2" style="{bold_style}">소속부서</td>
-                        <td rowspan="2" style="{normal_style}">T/S TEAM</td>
-                        <td rowspan="2" style="{bold_style}">근무일</td>
-                        <td rowspan="2" style="{normal_style}">{date_str}</td>
-                        <td rowspan="2" style="{bold_style}">기안자</td>
-                        <td rowspan="2" style="{normal_style}">{current_user}</td>
-                    </tr>
-                    <tr></tr>
-                    <tr>
-                        <td colspan="7" style="{red_alert_style}">
-                            ※ 근무일: YYYY-MM-DD 형식 | HR: 숫자만 입력 (예: 2, 3.5) | 실근무시간: HH:MM~HH:MM 형식<br>
-                            ※ 신청시간, 실근무시간, HR&nbsp;&nbsp;&nbsp;따옴표 " " 사용금지
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="{bold_style} width: 5%;">No.</td>
-                        <td colspan="2" style="{bold_style} width: 15%;">성명</td>
-                        <td style="{bold_style} width: 20%;">신청시간</td>
-                        <td style="{bold_style} width: 30%;">근무사유</td>
-                        <td style="{bold_style} width: 20%;">실근무시간</td>
-                        <td style="{bold_style} width: 10%;">HR</td>
-                    </tr>
-                    {rows_html}
-                </tbody>
-            </table>
-        </div>
+        
+        <table id="table-display" style="border-collapse: collapse; width: 100%; table-layout: fixed;">
+            <colgroup>
+                <col style="width: 5%;">
+                <col style="width: 7.5%;">
+                <col style="width: 7.5%;">
+                <col style="width: 20%;">
+                <col style="width: 30%;">
+                <col style="width: 20%;">
+                <col style="width: 10%;">
+            </colgroup>
+            <tbody>
+                <tr>
+                    <td colspan="7" style="{title_style}">시간외근무</td>
+                </tr>
+                <!-- 💡 하이웍스 원본과 완벽히 동일한 2줄 병합 셀 유지 -->
+                <tr>
+                    <td colspan="2" rowspan="2" style="{bold_style}">소속부서</td>
+                    <td rowspan="2" style="{normal_style}">T/S TEAM</td>
+                    <td rowspan="2" style="{bold_style}">근무일</td>
+                    <td rowspan="2" style="{normal_style}">{date_str}</td>
+                    <td rowspan="2" style="{bold_style}">기안자</td>
+                    <td rowspan="2" style="{normal_style}">{current_user}</td>
+                </tr>
+                <!-- HTML 강제 주입 복사 덕분에 이 빈 줄이 누락되지 않고 하이웍스로 전달됨! -->
+                <tr></tr>
+                <tr>
+                    <td colspan="7" style="{red_alert_style}">※ 근무일: YYYY-MM-DD 형식 | HR: 숫자만 입력 (예: 2, 3.5) | 실근무시간: HH:MM~HH:MM 형식<br>※ 신청시간, 실근무시간, HR&nbsp;&nbsp;&nbsp;따옴표 " " 사용금지</td>
+                </tr>
+                <tr>
+                    <td style="{bold_style}">No.</td>
+                    <td colspan="2" style="{bold_style}">성명</td>
+                    <td style="{bold_style}">신청시간</td>
+                    <td style="{bold_style}">근무사유</td>
+                    <td style="{bold_style}">실근무시간</td>
+                    <td style="{bold_style}">HR</td>
+                </tr>
+                {rows_html}
+            </tbody>
+        </table>
+
         <script>
         function copyTable() {{
-            var el = document.getElementById("table-container");
+            var el = document.getElementById("table-display");
+            
+            // 💡 드래그 복사가 아닌 HTML 구조 자체를 클립보드에 강제로 집어넣어 빈 줄 누락 완벽 차단!
+            var handleCopy = function(e) {{
+                var htmlData = "<html><head><meta charset='utf-8'></head><body>" + el.outerHTML + "</body></html>";
+                e.clipboardData.setData("text/html", htmlData);
+                e.preventDefault(); 
+            }};
+            
+            document.addEventListener("copy", handleCopy);
+            
             var range = document.createRange();
             var sel = window.getSelection();
             sel.removeAllRanges();
             try {{ range.selectNodeContents(el); sel.addRange(range); }} 
             catch (e) {{ range.selectNode(el); sel.addRange(range); }}
-            document.execCommand("copy");
+            
+            // 진짜 복사 실행
+            document.execCommand("copy"); 
+            
+            // 후처리
+            document.removeEventListener("copy", handleCopy);
             sel.removeAllRanges();
             
+            // UI 변경
             var btn = document.querySelector(".copy-btn");
             var btnText = document.getElementById("btn-text");
             var icon = btn.querySelector('.material-symbols-outlined');
