@@ -463,10 +463,10 @@ with col1:
         records_night.sort(key=lambda x: members.index(x[0]) if x[0] in members else 999)
         
         is_viewing_today = (view_date == today_date)
-        download_avail_time = current_time.replace(hour=12, minute=10, second=0, microsecond=0)
+        download_avail_time = current_time.replace(hour=12, minute=55, second=0, microsecond=0)
         
         if is_viewing_today and current_time < download_avail_time:
-            st.warning("금일 야간 전자결재 상신(복사)은 **12:10분 이후**부터 활성화됩니다.", icon=":material/warning:")
+            st.warning("금일 야간 전자결재 상신(복사)은 **12:55분 이후**부터 활성화됩니다.", icon=":material/warning:")
         else:
             is_past = (view_date < today_date)
             render_copyable_table(records_night, "야간", view_str, st.session_state.current_user, is_past)
@@ -478,13 +478,13 @@ with col1:
         tab_night, tab_holiday = tabs[0], tabs[1]
         
         with tab_night:
-            deadline_time = current_time.replace(hour=12, minute=0, second=0, microsecond=0)
+            deadline_time = current_time.replace(hour=12, minute=50, second=0, microsecond=0)
             is_past_deadline = current_time >= deadline_time
             form_disabled = False
             
             if is_past_deadline:
                 daily_pw = get_daily_password(today_str)
-                st.error("금일 야간근무 등록 및 수정이 마감되었습니다. (12:00 마감)", icon=":material/error:")
+                st.error("금일 야간근무 등록 및 수정이 마감되었습니다. (12:50 마감)", icon=":material/error:")
                 
                 override_input = st.text_input("지각자 예외 등록 암호 (관리자에게 문의)", type="password", key="override_pw")
                 
