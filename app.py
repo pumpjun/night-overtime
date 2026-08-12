@@ -465,7 +465,10 @@ with col1:
         is_viewing_today = (view_date == today_date)
         download_avail_time = current_time.replace(hour=12, minute=55, second=0, microsecond=0)
         
-        if is_viewing_today and current_time < download_avail_time:
+        # 미래 날짜를 선택한 경우 무조건 차단하는 로직을 최상단에 추가합니다.
+        if view_date > today_date:
+            st.warning(f"미래 날짜({view_str})의 결재 상신은 아직 불가능합니다. (해당일 12:55 이후 가능)", icon=":material/warning:")
+        elif is_viewing_today and current_time < download_avail_time:
             st.warning("금일 야간 전자결재 상신(복사)은 **12:55분 이후**부터 활성화됩니다.", icon=":material/warning:")
         else:
             is_past = (view_date < today_date)
@@ -496,10 +499,11 @@ with col1:
                         st.error("암호가 일치하지 않습니다.", icon=":material/error:")
                     form_disabled = True 
             else:
-                time_diff = deadline_time - current_time
-                hours, remainder = divmod(time_diff.seconds, 3600)
-                minutes, seconds = divmod(remainder, 60)
-                st.info(f"등록 마감까지 **{hours}시간 {minutes}분** 남았습니다. (12:00 마감)", icon=":material/hourglass_empty:")
+            time_diff = deadline_time - current_time
+            hours, remainder = divmod(time_diff.seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            # 텍스트를 12:50 마감으로 변경합니다.
+            st.info(f"등록 마감까지 **{hours}시간 {minutes}분** 남았습니다. (12:50 마감)", icon=":material/hourglass_empty:")
             
             st.caption(f"오늘(**{today_str}**) 기준으로 야근이 등록됩니다.")
             st.markdown("**1. 종료 시간을 선택하세요**")
