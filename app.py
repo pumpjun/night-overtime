@@ -499,11 +499,11 @@ with col1:
                         st.error("암호가 일치하지 않습니다.", icon=":material/error:")
                     form_disabled = True 
             else:
-            time_diff = deadline_time - current_time
-            hours, remainder = divmod(time_diff.seconds, 3600)
-            minutes, seconds = divmod(remainder, 60)
-            # 텍스트를 12:50 마감으로 변경합니다.
-            st.info(f"등록 마감까지 **{hours}시간 {minutes}분** 남았습니다. (12:50 마감)", icon=":material/hourglass_empty:")
+                # 💡 여기서부터 윗줄과 똑같이 줄을 맞춰주세요! (보통 Tab 키 4번 위치)
+                time_diff = deadline_time - current_time
+                hours, remainder = divmod(time_diff.seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                st.info(f"등록 마감까지 **{hours}시간 {minutes}분** 남았습니다. (12:50 마감)", icon=":material/hourglass_empty:")
             
             st.caption(f"오늘(**{today_str}**) 기준으로 야근이 등록됩니다.")
             st.markdown("**1. 종료 시간을 선택하세요**")
