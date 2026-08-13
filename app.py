@@ -303,7 +303,7 @@ if not st.session_state.logged_in:
         st.markdown(f"**현재 선택됨:** `{st.session_state.login_selected_user}`")
         
         with st.form("login_form", border=False):
-            pin_input = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력 (기본: 5050)")
+            pin_input = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력 ")
             submitted = st.form_submit_button("로그인", type="primary", use_container_width=True, icon=":material/login:")
             
             if submitted:
