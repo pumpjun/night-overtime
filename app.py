@@ -23,7 +23,7 @@ admins = ["장현준", "김동기", "최상철", "강택규", "김현준"]
 ALL_USERS = members + admins
 HOLIDAY_USERS = admins + members 
 
-# ⭐️ 3. 구글 스프레드시트 연동 (접속 준비만 하고 데이터는 아직 안 불러옴!)
+# ⭐️ 3. 구글 스프레드시트 연동
 @st.cache_resource
 def init_connection():
     key_dict = json.loads(st.secrets["gcp_service_account"])
@@ -39,9 +39,7 @@ def init_connection():
 
 doc = init_connection()
 sheet = doc.sheet1                       
-account_sheet = doc.worksheet("계정정보")  
-
-# (💡 속도 저하의 원인이었던 전체 데이터 불러오기 코드를 여기에서 아래쪽으로 이동시켰습니다.)
+# account_sheet = doc.worksheet("계정정보")  <-- 계정 시트 불필요하여 삭제
 
 def get_work_type(row):
     if len(row) >= 6 and row[5].strip() != "":
@@ -50,8 +48,7 @@ def get_work_type(row):
         return "휴일"
     return "야간"
 
-
-# ⭐️ 4. CSS 스타일 전역 주입 (맥북용 Apple SD Gothic Neo 폰트 반영)
+# ⭐️ 4. CSS 스타일 전역 주입
 font_family = "'Apple SD Gothic Neo', '맑은 고딕', 'Malgun Gothic', '돋움', Dotum, sans-serif"
 
 custom_css = f"""
@@ -109,15 +106,13 @@ custom_css = f"""
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-
 def get_daily_password(date_str):
     random.seed(date_str + "_TS_TEAM_SECRET")
     pw = str(random.randint(1000, 9999))
     random.seed() 
     return pw
 
-
-# ⭐️ 하이웍스 최적화 폰트 사이즈 반영 및 과거기록 HR 자동계산 함수
+# ⭐️ 표 렌더링 함수
 def render_copyable_table(records, work_type, date_str, current_user, is_past_record=False):
     if not records:
         st.info("해당 날짜에 등록된 근무자가 없습니다.", icon=":material/info:")
@@ -201,7 +196,6 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
                 <tr>
                     <td colspan="7" style="{title_style}">시간외근무</td>
                 </tr>
-                <!-- 💡 하이웍스 원본과 완벽히 동일한 2줄 병합 셀 유지 -->
                 <tr>
                     <td colspan="2" rowspan="2" style="{bold_style}">소속부서</td>
                     <td rowspan="2" style="{normal_style}">T/S TEAM</td>
@@ -210,7 +204,6 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
                     <td rowspan="2" style="{bold_style}">기안자</td>
                     <td rowspan="2" style="{normal_style}">{current_user}</td>
                 </tr>
-                <!-- HTML 강제 주입 복사 덕분에 이 빈 줄이 누락되지 않고 하이웍스로 전달됨! -->
                 <tr></tr>
                 <tr>
                     <td colspan="7" style="{red_alert_style}">※ 근무일: YYYY-MM-DD 형식 | HR: 숫자만 입력 (예: 2, 3.5) | 실근무시간: HH:MM~HH:MM 형식<br>※ 신청시간, 실근무시간, HR&nbsp;&nbsp;&nbsp;따옴표 " " 사용금지</td>
@@ -231,7 +224,6 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
         function copyTable() {{
             var el = document.getElementById("table-display");
             
-            // 💡 드래그 복사가 아닌 HTML 구조 자체를 클립보드에 강제로 집어넣어 빈 줄 누락 완벽 차단!
             var handleCopy = function(e) {{
                 var htmlData = "<html><head><meta charset='utf-8'></head><body>" + el.outerHTML + "</body></html>";
                 e.clipboardData.setData("text/html", htmlData);
@@ -246,14 +238,11 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
             try {{ range.selectNodeContents(el); sel.addRange(range); }} 
             catch (e) {{ range.selectNode(el); sel.addRange(range); }}
             
-            // 진짜 복사 실행
             document.execCommand("copy"); 
             
-            // 후처리
             document.removeEventListener("copy", handleCopy);
             sel.removeAllRanges();
             
-            // UI 변경
             var btn = document.querySelector(".copy-btn");
             var btnText = document.getElementById("btn-text");
             var icon = btn.querySelector('.material-symbols-outlined');
@@ -282,7 +271,7 @@ if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if "current_user" not in st.session_state: st.session_state.current_user = None
 if "login_selected_user" not in st.session_state: st.session_state.login_selected_user = ALL_USERS[0]
 
-# 🔒 로그인 화면 (데이터 로딩 없이 즉각 반응)
+# 🔒 로그인 화면
 if not st.session_state.logged_in:
     st.markdown("## :material/domain: T/S 근무 계획 관리 시스템")
     st.caption("Created by tskwon :material/science:")
@@ -315,77 +304,36 @@ if not st.session_state.logged_in:
         st.markdown(f"**현재 선택됨:** `{st.session_state.login_selected_user}`")
         
         with st.form("login_form", border=False):
-            pin_input = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력")
+            pin_input = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력 (기본: 5050)")
             submitted = st.form_submit_button("로그인", type="primary", use_container_width=True, icon=":material/login:")
             
             if submitted:
-                # 💡 로그인 버튼을 눌렀을 때만 계정 시트 정보를 불러옵니다! (렉 해결)
-                with st.spinner("계정 정보를 확인하고 있습니다..."):
-                    account_data = account_sheet.get_all_values()
-                    USER_PINS = {row[0]: row[1] for row in account_data[1:] if len(row) >= 2}
-                    
-                    if USER_PINS.get(st.session_state.login_selected_user) == pin_input:
-                        st.session_state.logged_in = True
-                        st.session_state.current_user = st.session_state.login_selected_user
-                        st.rerun()
-                    else:
-                        st.error("비밀번호가 일치하지 않습니다.", icon=":material/error:")
+                # 💡 공통 비밀번호 5050 적용 (시트 호출이 없어 즉시 로그인됨)
+                if pin_input == "5050":
+                    st.session_state.logged_in = True
+                    st.session_state.current_user = st.session_state.login_selected_user
+                    st.rerun()
+                else:
+                    st.error("비밀번호가 일치하지 않습니다.", icon=":material/error:")
     st.stop() 
 
 
 # =====================================================================
-# 로그인 성공 시 메인 화면 (전체 데이터 불러오기)
+# 로그인 성공 시 메인 화면
 # =====================================================================
 
-# 💡 로그인에 성공해야만 전체 근무기록과 계정 정보를 쫙 불러옵니다.
+# 💡 계정 정보 시트를 불러오지 않으므로 로딩 속도가 크게 향상됩니다.
 with st.spinner("데이터를 불러오는 중입니다..."):
     all_data = sheet.get_all_values()
-    account_data = account_sheet.get_all_values()
-    USER_PINS = {row[0]: row[1] for row in account_data[1:] if len(row) >= 2}
 
-# ⭐️ 상단 헤더 및 로그아웃/비밀번호 변경 버튼 배치
-top_col1, top_col2, top_col3 = st.columns([5.5, 1.5, 1.5])
+# ⭐️ 상단 헤더 및 로그아웃 버튼 배치
+top_col1, top_col2 = st.columns([7, 1.5])
 
 with top_col1:
     st.markdown("## :material/domain: T/S 근무 계획 관리 시스템") 
     st.caption("Created by tskwon :material/science:")
 
 with top_col2:
-    with st.popover("비밀번호 변경", icon=":material/key:", use_container_width=True):
-        with st.form("change_pw_form", border=False):
-            old_pw = st.text_input("현재 비밀번호", type="password", placeholder="기존 비밀번호")
-            new_pw = st.text_input("새 비밀번호", type="password", placeholder="변경할 비밀번호")
-            new_pw_confirm = st.text_input("새 비밀번호 확인", type="password", placeholder="한번 더 입력")
-            
-            submit_pw = st.form_submit_button("변경 적용", type="primary", use_container_width=True)
-            
-            if submit_pw:
-                if old_pw != USER_PINS.get(st.session_state.current_user):
-                    st.error("현재 비밀번호가 일치하지 않습니다.", icon=":material/error:")
-                elif new_pw != new_pw_confirm:
-                    st.error("새 비밀번호가 서로 일치하지 않습니다.", icon=":material/error:")
-                elif len(new_pw) < 4:
-                    st.error("보안을 위해 4자리 이상 입력해주세요.", icon=":material/warning:")
-                elif old_pw == new_pw:
-                    st.error("기존과 동일한 비밀번호입니다.", icon=":material/warning:")
-                else:
-                    row_index = -1
-                    for i, row in enumerate(account_data):
-                        if len(row) >= 1 and row[0] == st.session_state.current_user:
-                            row_index = i + 1 
-                            break
-                    
-                    if row_index != -1:
-                        account_sheet.update_cell(row_index, 2, new_pw) 
-                        st.success("변경 완료! 다시 로그인해주세요.", icon=":material/check_circle:")
-                        time.sleep(1.5)
-                        st.session_state.logged_in = False
-                        st.session_state.current_user = None
-                        st.rerun()
-                    else:
-                        st.error("계정 정보를 찾을 수 없습니다.", icon=":material/error:")
-
-with top_col3:
     if st.button("로그아웃", use_container_width=True, icon=":material/logout:"):
         st.session_state.logged_in = False
         st.session_state.current_user = None
@@ -465,7 +413,6 @@ with col1:
         is_viewing_today = (view_date == today_date)
         download_avail_time = current_time.replace(hour=12, minute=55, second=0, microsecond=0)
         
-        # 미래 날짜를 선택한 경우 무조건 차단하는 로직을 최상단에 추가합니다.
         if view_date > today_date:
             st.warning(f"미래 날짜({view_str})의 결재 상신은 아직 불가능합니다. (해당일 12:55 이후 가능)", icon=":material/warning:")
         elif is_viewing_today and current_time < download_avail_time:
@@ -499,7 +446,6 @@ with col1:
                         st.error("암호가 일치하지 않습니다.", icon=":material/error:")
                     form_disabled = True 
             else:
-                # 💡 여기서부터 윗줄과 똑같이 줄을 맞춰주세요! (보통 Tab 키 4번 위치)
                 time_diff = deadline_time - current_time
                 hours, remainder = divmod(time_diff.seconds, 3600)
                 minutes, seconds = divmod(remainder, 60)
