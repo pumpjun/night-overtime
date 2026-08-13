@@ -39,7 +39,6 @@ def init_connection():
 
 doc = init_connection()
 sheet = doc.sheet1                       
-# account_sheet = doc.worksheet("계정정보")  <-- 계정 시트 불필요하여 삭제
 
 def get_work_type(row):
     if len(row) >= 6 and row[5].strip() != "":
@@ -304,7 +303,7 @@ if not st.session_state.logged_in:
         st.markdown(f"**현재 선택됨:** `{st.session_state.login_selected_user}`")
         
         with st.form("login_form", border=False):
-            pin_input = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력 ")
+            pin_input = st.text_input("비밀번호", type="password", placeholder="비밀번호 입력 (기본: 5050)")
             submitted = st.form_submit_button("로그인", type="primary", use_container_width=True, icon=":material/login:")
             
             if submitted:
@@ -322,9 +321,13 @@ if not st.session_state.logged_in:
 # 로그인 성공 시 메인 화면
 # =====================================================================
 
-# 💡 계정 정보 시트를 불러오지 않으므로 로딩 속도가 크게 향상됩니다.
+# 💡 렉 개선의 핵심: 데이터를 캐싱하여 불필요한 구글 스프레드시트 통신을 막습니다.
+@st.cache_data(ttl=300) # 5분(300초) 동안 캐시 유지 (다른 사람이 수정한 내용 갱신 목적)
+def load_sheet_data():
+    return sheet.get_all_values()
+
 with st.spinner("데이터를 불러오는 중입니다..."):
-    all_data = sheet.get_all_values()
+    all_data = load_sheet_data()
 
 # ⭐️ 상단 헤더 및 로그아웃 버튼 배치
 top_col1, top_col2 = st.columns([7, 1.5])
@@ -485,6 +488,9 @@ with col1:
                             new_id = len(all_data)
                             sheet.append_row([new_id, st.session_state.current_user, today_str, st.session_state.night_end_time, st.session_state.night_reason, "야간"])
                             st.success(f"야간근무 등록 완료!", icon=":material/celebration:")
+                        
+                        # 💡 데이터베이스가 변경되었으므로 캐시를 지우고 새로고침
+                        load_sheet_data.clear()
                         st.rerun()
                     
                 if st.button(f"야간 취소", key="n_del", type="secondary", use_container_width=True, disabled=form_disabled, icon=":material/delete:"):
@@ -497,6 +503,9 @@ with col1:
                     if row_to_delete != -1:
                         sheet.delete_rows(row_to_delete)
                         st.warning(f"야간근무 취소 완료!", icon=":material/delete:")
+                        
+                        # 💡 캐시 지우기 추가
+                        load_sheet_data.clear()
                     else:
                         st.info(f"기록 없음", icon=":material/info:")
                     st.rerun()
@@ -536,6 +545,9 @@ with col1:
                             new_id = len(all_data)
                             sheet.append_row([new_id, st.session_state.current_user, this_saturday_str, st.session_state.holiday_end_time, st.session_state.holiday_reason, "휴일"])
                             st.success(f"휴일근무 등록 완료!", icon=":material/celebration:")
+                        
+                        # 💡 캐시 지우기 추가
+                        load_sheet_data.clear()
                         st.rerun()
                     
                 if st.button(f"휴일 취소", key="h_del", type="secondary", use_container_width=True, icon=":material/delete:"):
@@ -548,6 +560,9 @@ with col1:
                     if row_to_delete != -1:
                         sheet.delete_rows(row_to_delete)
                         st.warning(f"휴일근무 취소 완료!", icon=":material/delete:")
+                        
+                        # 💡 캐시 지우기 추가
+                        load_sheet_data.clear()
                     else:
                         st.info(f"기록 없음", icon=":material/info:")
                     st.rerun()
