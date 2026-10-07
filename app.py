@@ -124,6 +124,9 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
     bold_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 11pt; font-weight: bold; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
     normal_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 11pt; font-weight: normal; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
     
+    # ✅ 1. 기입되는 내용을 위한 13px 크기의 새로운 스타일 추가
+    data_style_13px = f"border: 1px solid #000000; font-family: {font_family}; font-size: 13px; font-weight: normal; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
+    
     rows_html = ""
     for idx, (name, end_t, reason) in enumerate(records, start=1):
         time_str = f"17:30 ~ {end_t}" if work_type == "야간" else f"08:00 ~ {end_t}"
@@ -142,6 +145,17 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
                 hr_str = f"{hr:g}" 
             except ValueError:
                 hr_str = ""
+        
+        # ✅ 2. HTML 행(row) 생성 부분 수정
+        # 첫 번째 열({idx})은 기존 normal_style(11pt)을 유지하고, 나머지는 data_style_13px 적용
+        rows_html += f'<tr>'
+        rows_html += f'<td style="{normal_style}">{idx}</td>'
+        rows_html += f'<td colspan="2" style="{data_style_13px}">{name}</td>'
+        rows_html += f'<td style="{data_style_13px}">{time_str}</td>'
+        rows_html += f'<td style="{data_style_13px} text-align: left;">{reason}</td>'
+        rows_html += f'<td style="{data_style_13px}">{actual_time_str}</td>'
+        rows_html += f'<td style="{data_style_13px}">{hr_str}</td>'
+        rows_html += f'</tr>'
         
         rows_html += f'<tr><td style="{normal_style}">{idx}</td><td colspan="2" style="{normal_style}">{name}</td><td style="{normal_style}">{time_str}</td><td style="{normal_style} text-align: left;">{reason}</td><td style="{normal_style}">{actual_time_str}</td><td style="{normal_style}">{hr_str}</td></tr>'
     
