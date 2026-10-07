@@ -157,7 +157,7 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
         rows_html += f'<td style="{data_style_13px}">{hr_str}</td>'
         rows_html += f'</tr>'
         
-        rows_html += f'<tr><td style="{normal_style}">{idx}</td><td colspan="2" style="{normal_style}">{name}</td><td style="{normal_style}">{time_str}</td><td style="{normal_style} text-align: left;">{reason}</td><td style="{normal_style}">{actual_time_str}</td><td style="{normal_style}">{hr_str}</td></tr>'
+        
     
     hiworks_url = "https://approval.office.hiworks.com/ohyoung.net/approval/document/write"
     
