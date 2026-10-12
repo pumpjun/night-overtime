@@ -123,6 +123,10 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
     red_alert_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 9pt; font-weight: bold; color: #FF0000; background-color: #ffffff; text-align: left; vertical-align: middle; padding: 6px; line-height: 1.4;"
     bold_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 11pt; font-weight: bold; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
     normal_style = f"border: 1px solid #000000; font-family: {font_family}; font-size: 11pt; font-weight: normal; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
+
+    bold_style_13px = f"border: 1px solid #000000; font-family: {font_family}; font-size: 13px; font-weight: bold; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
+    normal_style_13px = f"border: 1px solid #000000; font-family: {font_family}; font-size: 13px; font-weight: normal; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
+    data_style_13px = f"border: 1px solid #000000; font-family: {font_family}; font-size: 13px; font-weight: normal; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
     
     # ✅ 1. 기입되는 내용을 위한 13px 크기의 새로운 스타일 추가
     data_style_13px = f"border: 1px solid #000000; font-family: {font_family}; font-size: 13px; font-weight: normal; color: #000000; background-color: #ffffff; text-align: center; vertical-align: middle; padding: 6px;"
@@ -209,13 +213,14 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
                 <tr>
                     <td colspan="7" style="{title_style}">시간외근무</td>
                 </tr>
+                <!-- ✅ 수정한 부분: bold_style -> bold_style_13px / normal_style -> normal_style_13px 로 변경 -->
                 <tr>
-                    <td colspan="2" rowspan="2" style="{bold_style}">소속부서</td>
-                    <td rowspan="2" style="{normal_style}">T/S TEAM</td>
-                    <td rowspan="2" style="{bold_style}">근무일</td>
-                    <td rowspan="2" style="{normal_style}">{date_str}</td>
-                    <td rowspan="2" style="{bold_style}">기안자</td>
-                    <td rowspan="2" style="{normal_style}">{current_user}</td>
+                    <td colspan="2" rowspan="2" style="{bold_style_13px}">소속부서</td>
+                    <td rowspan="2" style="{normal_style_13px}">T/S TEAM</td>
+                    <td rowspan="2" style="{bold_style_13px}">근무일</td>
+                    <td rowspan="2" style="{normal_style_13px}">{date_str}</td>
+                    <td rowspan="2" style="{bold_style_13px}">기안자</td>
+                    <td rowspan="2" style="{normal_style_13px}">{current_user}</td>
                 </tr>
                 <tr></tr>
                 <tr>
