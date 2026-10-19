@@ -16,6 +16,79 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
+# ⭐️ 글꼴: 영어·숫자 = Outfit, 한글 = 나눔스퀘어 네오 (저장소 static/fonts 폴더의 글꼴 파일)
+#    Streamlit Cloud: .streamlit/config.toml 의 enableStaticServing 으로 static 폴더를 내보냄
+#    (config 없이 내 PC에서 실행하면 PC 안에서만 쓰는 통로로 내보냄 · 글꼴 파일이 없으면 기존 글꼴)
+import os, re as _re, base64 as _b64
+_APP_DIR = os.path.dirname(os.path.abspath(__file__))
+_FONT_DIR = os.path.join(_APP_DIR, "static", "fonts")
+_OY_NEO = [("aLt", "100 349"), ("bRg", "350 549"), ("cBd", "550 749"), ("dEb", "750 849"), ("eHv", "850 900")]
+_OY_OUTFIT = "outfit-latin-wght-normal.woff2"
+_OY_UR = ("U+0000-001F,U+0021-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,"
+          "U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD")
+
+@st.cache_resource
+def _oy_font_server():
+    import threading, functools
+    from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+    class _H(SimpleHTTPRequestHandler):
+        def do_GET(self):
+            _name = self.path.split("?")[0].lstrip("/")
+            if "/" in _name or "\\" in _name or not _name.lower().endswith(".woff2"):
+                self.send_error(404); return
+            return super().do_GET()
+        def end_headers(self):
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "max-age=31536000")
+            super().end_headers()
+        def log_message(self, *a):
+            pass
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(_H, directory=_FONT_DIR))
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return f"http://127.0.0.1:{srv.server_address[1]}"
+
+def _oy_font_base():
+    if not os.path.exists(os.path.join(_FONT_DIR, "NanumSquareNeoTTF-bRg.woff2")):
+        return ""
+    try:
+        if st.get_option("server.enableStaticServing"):
+            return "app/static/fonts"
+    except Exception:
+        pass
+    try:
+        return _oy_font_server()
+    except Exception:
+        return ""
+
+_FONT_BASE = _oy_font_base()
+OY_FONT_FACES = ""
+if _FONT_BASE:
+    OY_FONT_FACES = (f"@font-face {{ font-family: 'OY Outfit'; font-style: normal; font-weight: 100 900; font-display: swap; "
+                     f"src: url('{_FONT_BASE}/{_OY_OUTFIT}') format('woff2-variations'), url('{_FONT_BASE}/{_OY_OUTFIT}') format('woff2'); unicode-range: {_OY_UR}; }}\n"
+                     + "\n".join(f"@font-face {{ font-family: 'OY NanumSquare Neo'; font-style: normal; font-weight: {_w}; font-display: swap; "
+                                 f"src: url('{_FONT_BASE}/NanumSquareNeoTTF-{_c}.woff2') format('woff2'); }}" for _c, _w in _OY_NEO))
+    # 입력칸 · 버튼 · 탭 등 Streamlit 기본 글자도 같은 글꼴로 (config.toml에 이미 있으면 그대로)
+    try:
+        from streamlit import config as _st_config
+        _THEME_FONT = "OY Outfit, OY NanumSquare Neo, sans-serif"
+        if _st_config.get_option("theme.font") != _THEME_FONT or _FONT_BASE not in str(_st_config.get_option("theme.fontFaces") or ""):
+            _st_config.set_option("theme.fontFaces",
+                [{"family": "OY Outfit", "url": f"{_FONT_BASE}/{_OY_OUTFIT}", "weight": "100 900", "unicodeRange": _OY_UR}]
+                + [{"family": "OY NanumSquare Neo", "url": f"{_FONT_BASE}/NanumSquareNeoTTF-{_c}.woff2", "weight": _w} for _c, _w in _OY_NEO])
+            _st_config.set_option("theme.font", _THEME_FONT)
+            st.rerun()
+    except Exception:
+        pass
+
+def _logo_b64():
+    for _p in ("logo1.png", "logo.png"):
+        try:
+            with open(os.path.join(_APP_DIR, _p), "rb") as _f:
+                return _b64.b64encode(_f.read()).decode()
+        except Exception:
+            pass
+    return ""
+
 # ⭐️ 2. 사용자 및 관리자 정의
 members = ["권회준", "김민호", "오진영", "강한수", "최지훈", "박현수", "테이", "라나", "이르판"]
 admins = ["장현준", "김동기", "최상철", "강택규", "김현준"]
@@ -48,10 +121,47 @@ def get_work_type(row):
     return "야간"
 
 # ⭐️ 4. CSS 스타일 전역 주입
-font_family = "'Apple SD Gothic Neo', '맑은 고딕', 'Malgun Gothic', '돋움', Dotum, sans-serif"
+font_family = "'OY Outfit', 'OY NanumSquare Neo', 'Apple SD Gothic Neo', '맑은 고딕', 'Malgun Gothic', '돋움', Dotum, sans-serif"
 
 custom_css = f"""
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
 <style>
+    __OY_FONT_FACES__
+    .stApp, .stApp p, .stApp label, .stApp button, .stApp input, .stApp textarea, .stApp li, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5,
+    .stApp [data-testid="stMarkdownContainer"], .stApp table {{ font-family: {font_family}; }}
+
+    /* ---------- 상단 바 (Spectra50 · SpectraMatch · UV-Vis · Dye Finder와 같은 네이비 고정 바) ---------- */
+    .stApp .block-container {{ padding-top: 76px !important; }}
+    .block-container [data-testid="stLayoutWrapper"]:has(> .st-key-topbar),
+    .block-container > div > [data-testid="stVerticalBlock"] > div:has(> .st-key-topbar),
+    .block-container [data-testid="stElementContainer"]:has(> [data-testid="stMarkdown"] style):not(:has(p, img, span, table)) {{ margin-bottom: -1rem !important; }}
+    .st-key-topbar {{
+        position: fixed !important; top: 0; left: 0; right: 0; height: 60px; z-index: 999990;
+        background: linear-gradient(100deg, #1b489d 0%, #2557b8 100%);
+        margin: 0 !important; padding: 0 20px !important; box-shadow: 0 4px 18px rgba(19,55,119,.28);
+        display: flex; flex-direction: column; justify-content: center;
+    }}
+    .st-key-topbar [data-testid="stHorizontalBlock"] {{ align-items: center; flex-wrap: nowrap !important; gap: 8px !important; }}
+    .st-key-topbar [data-testid="stHorizontalBlock"] > div:nth-child(1) {{ flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; }}
+    .st-key-topbar [data-testid="stHorizontalBlock"] > div:nth-child(2) {{ flex: 0 0 auto !important; width: auto !important; min-width: 0 !important; }}
+    .oy-brand {{ display: flex; align-items: center; gap: 12px; color: #fff; white-space: nowrap; transform: translateY(-8px); min-width: 0; }}
+    .oy-brand img {{ height: 38px; width: auto; max-width: 160px; object-fit: contain; }}
+    .oy-brand .mark {{ width: 34px; height: 34px; border-radius: 9px; background: rgba(255,255,255,.15); color: #fff; display: flex; align-items: center; justify-content: center; }}
+    .oy-brand .t1 {{ font-size: 21px; font-weight: 800; letter-spacing: -.3px; line-height: 1; color: #fff; }}
+    .oy-brand .sub {{ font-size: 12px; font-weight: 600; color: #fff; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22); padding: 3px 10px; border-radius: 999px; }}
+    .oy-brand .material-symbols-outlined {{ font-family: 'Material Symbols Rounded', 'Material Symbols Outlined' !important; font-feature-settings: 'liga'; line-height: 1; }}
+    .stApp .st-key-topbar .stButton > button {{
+        background: transparent !important; color: #fff !important; border: 1px solid rgba(255,255,255,.35) !important;
+        border-radius: 9px !important; height: 36px !important; min-height: 36px !important; padding: 0 14px !important; box-shadow: none !important; white-space: nowrap;
+    }}
+    .stApp .st-key-topbar .stButton > button:hover {{ background: rgba(255,255,255,.14) !important; border-color: rgba(255,255,255,.6) !important; }}
+    .stApp .st-key-topbar .stButton > button * {{ color: #fff !important; }}
+    @media (max-width: 768px) {{
+        .st-key-topbar {{ padding: 0 12px !important; }}
+        .oy-brand img {{ height: 30px; }}
+        .oy-brand .t1 {{ font-size: 17px; }}
+        .oy-brand .sub {{ display: none; }}
+    }}
     [data-testid="stToolbar"], [data-testid="stAppDeployButton"], 
     [data-testid="stStatusWidget"], [data-testid="stDecoration"], 
     [data-testid="collapsedControl"], header[data-testid="stHeader"] {{ 
@@ -103,7 +213,25 @@ custom_css = f"""
     }}
 </style>
 """
+custom_css = custom_css.replace("__OY_FONT_FACES__", OY_FONT_FACES)
+custom_css = "\n".join(l for l in _re.sub(r"/\*.*?\*/", "", custom_css, flags=_re.S).splitlines() if l.strip())
 st.markdown(custom_css, unsafe_allow_html=True)
+
+# ⭐️ 상단 바: 로고 · 프로그램 이름 (로그인하면 오른쪽에 로그아웃)
+def _do_logout():
+    st.session_state.logged_in = False
+    st.session_state.current_user = None
+
+def render_topbar(show_logout=False):
+    _lg = _logo_b64()
+    _logo_html = (f"<img src='data:image/png;base64,{_lg}'>" if _lg
+                  else "<div class='mark'><span class='material-symbols-outlined'>domain</span></div>")
+    with st.container(key="topbar"):
+        _c1, _c2 = st.columns([1, 0.2], vertical_alignment="center")
+        _c1.markdown(f"<div class='oy-brand'>{_logo_html}<div class='t1'>T/S 근무 관리</div><span class='sub'>Created by tskwon</span></div>",
+                     unsafe_allow_html=True)
+        if show_logout:
+            _c2.button("로그아웃", key="topbar_logout", icon=":material/logout:", on_click=_do_logout)
 
 def get_daily_password(date_str):
     random.seed(date_str + "_TS_TEAM_SECRET")
@@ -172,6 +300,7 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
     <meta charset="utf-8">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <style>
+        {OY_FONT_FACES}
         body {{ margin: 0; padding: 0; font-family: {font_family}; }}
         .btn-container {{ display: flex; gap: 10px; margin-bottom: 10px; }}
         .copy-btn, .link-btn {{
@@ -179,7 +308,7 @@ def render_copyable_table(records, work_type, date_str, current_user, is_past_re
             font-size: 15px; cursor: pointer; font-weight: bold; text-align: center;
             text-decoration: none; transition: background-color 0.3s; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center;
-            justify-content: center; gap: 6px; box-sizing: border-box; font-family: {font_family};
+            justify-content: center; gap: 6px; box-sizing: border-box; font-family: 'OY Outfit', 'OY NanumSquare Neo', {font_family};
         }}
         .copy-btn {{ background-color: #1b489d; }}
         .copy-btn:hover {{ background-color: #153b82; }}
@@ -291,8 +420,7 @@ if "login_selected_user" not in st.session_state: st.session_state.login_selecte
 
 # 🔒 로그인 화면
 if not st.session_state.logged_in:
-    st.markdown("## :material/domain: T/S 근무 계획 관리 시스템")
-    st.caption("Created by tskwon :material/science:")
+    render_topbar(show_logout=False)
     
     _, col_login, _ = st.columns([1, 1.5, 1])
     with col_login:
@@ -348,20 +476,8 @@ def load_sheet_data():
 with st.spinner("데이터를 불러오는 중입니다..."):
     all_data = load_sheet_data()
 
-# ⭐️ 상단 헤더 및 로그아웃 버튼 배치
-top_col1, top_col2 = st.columns([7, 1.5])
-
-with top_col1:
-    st.markdown("## :material/domain: T/S 근무 계획 관리 시스템") 
-    st.caption("Created by tskwon :material/science:")
-
-with top_col2:
-    if st.button("로그아웃", use_container_width=True, icon=":material/logout:"):
-        st.session_state.logged_in = False
-        st.session_state.current_user = None
-        st.rerun()
-        
-st.markdown("---") 
+# ⭐️ 상단 바 (로고 · 프로그램 이름 · 로그아웃)
+render_topbar(show_logout=True)
 
 
 # --- 6. 고정 데이터 및 날짜 정의 ---
