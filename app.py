@@ -156,6 +156,7 @@ custom_css = f"""
     }}
     .stApp .st-key-topbar .stButton > button:hover {{ background: rgba(255,255,255,.14) !important; border-color: rgba(255,255,255,.6) !important; }}
     .stApp .st-key-topbar .stButton > button * {{ color: #fff !important; }}
+    .st-key-oy_hidebadge {{ position: absolute !important; width: 0 !important; height: 0 !important; overflow: hidden !important; margin: 0 !important; }}
     @media (max-width: 768px) {{
         .st-key-topbar {{ padding: 0 12px !important; }}
         .oy-brand img {{ height: 30px; }}
@@ -222,6 +223,49 @@ def _do_logout():
     st.session_state.logged_in = False
     st.session_state.current_user = None
 
+# ⭐️ Streamlit Cloud 오른쪽 아래 'Hosted with Streamlit' / 'Manage app' 버튼 숨기기
+#    (버튼이 앱 바깥 페이지에 있어 CSS로는 안 됨 → 바깥 페이지에 숨김 스타일을 넣는 작은 스크립트.
+#     Streamlit 공식 기능이 아니라 Cloud가 바뀌면 다시 보일 수 있음. 실패해도 앱 동작에는 영향 없음)
+_HIDE_BADGE_JS = """
+<script>
+(function () {
+  var css = '[class*="viewerBadge"],[class*="ViewerBadge"],[data-testid="appCreatorAvatar"],' +
+            '[class*="_profileContainer"],[class*="_profilePreview"],[data-testid="manage-app-button"],' +
+            'a[href*="streamlit.io/cloud"]{display:none !important;}';
+  function docs() {
+    var out = [], w = window;
+    for (var i = 0; i < 5; i++) {
+      try { w = w.parent; if (w && w.document && out.indexOf(w.document) < 0) out.push(w.document); } catch (e) { break; }
+    }
+    return out;
+  }
+  function run() {
+    docs().forEach(function (d) {
+      try {
+        if (!d.getElementById('oy-hide-badge')) {
+          var s = d.createElement('style'); s.id = 'oy-hide-badge'; s.textContent = css; (d.head || d.documentElement).appendChild(s);
+        }
+        // streamlit.io 로 가는 링크가 들어 있는 '화면에 고정된' 버튼 묶음만 숨김
+        d.querySelectorAll('a[href*="streamlit.io"]').forEach(function (a) {
+          var el = a;
+          for (var k = 0; k < 8 && el && el !== d.body; k++) {
+            if (d.defaultView.getComputedStyle(el).position === 'fixed') { el.style.setProperty('display', 'none', 'important'); break; }
+            el = el.parentElement;
+          }
+        });
+      } catch (e) {}
+    });
+  }
+  run();
+  var n = 0, t = setInterval(function () { run(); if (++n > 60) clearInterval(t); }, 500);
+})();
+</script>
+"""
+
+def _hide_cloud_badge():
+    with st.container(key="oy_hidebadge"):
+        components.html(_HIDE_BADGE_JS, height=0)
+
 def render_topbar(show_logout=False):
     _lg = _logo_b64()
     _logo_html = (f"<img src='data:image/png;base64,{_lg}'>" if _lg
@@ -232,6 +276,7 @@ def render_topbar(show_logout=False):
                      unsafe_allow_html=True)
         if show_logout:
             _c2.button("로그아웃", key="topbar_logout", icon=":material/logout:", on_click=_do_logout)
+    _hide_cloud_badge()
 
 def get_daily_password(date_str):
     random.seed(date_str + "_TS_TEAM_SECRET")
