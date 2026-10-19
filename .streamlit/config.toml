@@ -3,6 +3,8 @@
 enableStaticServing = true
 
 [theme]
+# 아래 # 기호 뒤에 알아오신 회사 로고 색상 코드를 넣어주세요!
+primaryColor = "#1b489d"
 # 표 · 입력칸 · 드롭다운 글자까지: 영어·숫자 Outfit → 한글 나눔스퀘어 네오
 font = "OY Outfit, OY NanumSquare Neo, sans-serif"
 
