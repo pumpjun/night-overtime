@@ -1,0 +1,8 @@
+# 비밀 키 · 개인 데이터는 GitHub에 올리지 않음
+.streamlit/secrets.toml
+firebase_key.json
+시트백업_*.csv
+
+overtime.db
+__pycache__/
+*.pyc
