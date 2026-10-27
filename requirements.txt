@@ -1,5 +1,6 @@
-streamlit
-pandas
-openpyxl
 gspread
 google-auth
+google-cloud-firestore
+pandas
+openpyxl
+streamlit==1.63.0
